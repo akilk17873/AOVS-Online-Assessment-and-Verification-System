@@ -70,7 +70,6 @@ test.describe('Student Login UI', () => {
     test('TC05 - Valid Student ID and Password are accepted by UI', async ({ page }) => {
 
         await page.getByLabel(/student id/i).fill('STU001');
-
         await page.getByLabel(/password/i).fill('Test@123');
 
         await expect(
@@ -81,5 +80,4 @@ test.describe('Student Login UI', () => {
             page.getByLabel(/password/i)
         ).toHaveValue('Test@123');
     });
-
 });
