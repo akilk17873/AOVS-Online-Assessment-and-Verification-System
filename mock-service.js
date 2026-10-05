@@ -1,8 +1,10 @@
 require('dotenv').config();
 const express = require('express');
+const cors = require('cors');
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 const PORT = process.env.MOCK_COLLEGE_PORT || 3000;
 const TEST_STUDENT_ID = process.env.TEST_STUDENT_ID || 'TEST001';
