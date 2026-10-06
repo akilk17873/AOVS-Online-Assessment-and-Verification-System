@@ -211,6 +211,32 @@
                             </div>
                         </div>
 
+                        <!-- Written-Answer Input Container (SCRUM-9) -->
+                        <div class="written-answer-container hidden" id="writtenAnswerContainer">
+                            <div class="written-answer-header">
+                                <label for="writtenAnswerInput" class="written-answer-label">
+                                    <i class="fa-solid fa-pen-nib"></i> Your Written Response
+                                </label>
+                                <div class="written-answer-counts" id="writtenAnswerCounts">
+                                    <span id="writtenWordCount">0 words</span>
+                                    <span class="counts-dot">•</span>
+                                    <span id="writtenCharCount">0 characters</span>
+                                </div>
+                            </div>
+                            <textarea 
+                                id="writtenAnswerInput" 
+                                class="written-answer-textarea" 
+                                placeholder="Type your answer here... Formulate your response, explanations, and code clearly."
+                                rows="8"
+                                aria-label="Written answer input"
+                            ></textarea>
+                            <div class="written-answer-footer">
+                                <span class="save-status-indicator" id="saveStatusIndicator">
+                                    <i class="fa-solid fa-check"></i> Response preserved in session
+                                </span>
+                            </div>
+                        </div>
+
                         <!-- Answer Options Container -->
                         <div class="options-container" id="optionsContainer" role="radiogroup" aria-labelledby="questionHeading">
                             <!-- Dynamic Options (Radio or Checkbox) Injected Here -->

@@ -1,47 +1,105 @@
+/**
+ * AOVS (Online Assessment and Verification System)
+ * MongoDB Atlas Database Service (SCRUM-31)
+ *
+ * Implements connection management, collection models,
+ * dynamic exam question queries, and server-side security filtering.
+ */
+
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
+const { MongoClient } = require('mongodb');
 
-const app = express();
-app.use(express.json());
-app.use(cors());
+// Cached singleton connection
+let cachedClient = null;
+let cachedDb = null;
 
-const PORT = process.env.MOCK_COLLEGE_PORT || 3000;
-const TEST_STUDENT_ID = process.env.TEST_STUDENT_ID || 'TEST001';
-const TEST_PASSWORD = process.env.TEST_PASSWORD || 'Test@123';
-
-const path = require('path');
-
-// Serve static repository files so frontend can be accessed directly
-app.use(express.static(path.join(__dirname, '.')));
-
-// ============================================================
-// DATABASE INTEGRATION (SCRUM-31: MongoDB Atlas)
-// ============================================================
-const {
-    getMongoClient,
-    getDatabase,
-    isDatabaseConfigured,
-    getExamFromDb,
-    getAllExamsFromDb,
-    maskMongoUri
-} = require('./db');
-
-if (isDatabaseConfigured()) {
-    console.log(`[AOVS Database] MONGODB_URI detected: ${maskMongoUri(process.env.MONGODB_URI)}`);
-    getMongoClient()
-        .then(() => console.log('[AOVS Database] MongoDB Atlas connection verified successfully.'))
-        .catch(err => console.warn('[AOVS Database] MongoDB Atlas connection warning at startup:', err.message));
-} else {
-    console.log('[AOVS Database] MONGODB_URI not configured. Running with server-side repository.');
+/**
+ * Mask sensitive credentials in MongoDB connection string for safe diagnostics
+ * Example: mongodb+srv://admin:pass123@cluster.mongodb.net -> mongodb+srv://admin:***@cluster.mongodb.net
+ */
+function maskMongoUri(uri) {
+    if (!uri || typeof uri !== 'string') return '[not configured]';
+    return uri.replace(/\/\/(.*?):(.*?)@/, '//$1:***@');
 }
 
-// ============================================================
-// QUESTION & EXAM DATA MODELS (Server-Side Master Repository)
-// Confidential examination data (sample answers, keys, rubrics)
-// are strictly stored server-side and never exposed to students.
-// ============================================================
-const mockExams = {
+/**
+ * Check whether MONGODB_URI environment variable is defined
+ */
+function isDatabaseConfigured() {
+    return Boolean(process.env.MONGODB_URI && process.env.MONGODB_URI.trim().length > 0);
+}
+
+/**
+ * Get or establish a singleton connection to MongoDB Atlas
+ * @param {string} [customUri] Optional URI for testing
+ * @returns {Promise<MongoClient>}
+ */
+async function getMongoClient(customUri = null) {
+    const uri = customUri || process.env.MONGODB_URI;
+    if (!uri) {
+        return null;
+    }
+
+    if (cachedClient) {
+        return cachedClient;
+    }
+
+    try {
+        const client = new MongoClient(uri, {
+            serverSelectionTimeoutMS: 5000,
+            connectTimeoutMS: 5000,
+            maxPoolSize: 10
+        });
+
+        await client.connect();
+        cachedClient = client;
+        const dbName = process.env.MONGODB_DB_NAME || 'aovs';
+        cachedDb = client.db(dbName);
+
+        console.log(`[AOVS Database] Connected to MongoDB Atlas (DB: ${dbName})`);
+        return cachedClient;
+    } catch (error) {
+        console.error('[AOVS Database] Connection error:', error.message);
+        throw error;
+    }
+}
+
+/**
+ * Get MongoDB database instance
+ * @param {string} [customDbName]
+ * @returns {Promise<import('mongodb').Db>}
+ */
+async function getDatabase(customDbName = null) {
+    if (cachedDb && !customDbName) {
+        return cachedDb;
+    }
+    const client = await getMongoClient();
+    if (!client) {
+        return null;
+    }
+    const dbName = customDbName || process.env.MONGODB_DB_NAME || 'aovs';
+    return client.db(dbName);
+}
+
+/**
+ * Gracefully close database connection (useful for tests or shutdown)
+ */
+async function closeDatabaseConnection() {
+    if (cachedClient) {
+        try {
+            await cachedClient.close();
+        } catch (e) {
+            // Ignore close error
+        }
+        cachedClient = null;
+        cachedDb = null;
+    }
+}
+
+/**
+ * Default Master Exam & Question Dataset for Atlas Seeding
+ */
+const SEED_EXAMS = {
     'CS301-2026': {
         id: 'CS301-2026',
         title: 'Data Structures & Algorithms Certification Examination',
@@ -53,6 +111,7 @@ const mockExams = {
         totalMarks: 25,
         passingMarks: 12,
         proctorMode: 'AI Automated + Live Proctor',
+        isActive: true,
         instructions: [
             'This examination consists of written-answer questions and analytical problems.',
             'Type your answers thoroughly into the provided text area for each question.',
@@ -79,8 +138,8 @@ const mockExams = {
                 codeSnippet: null,
                 codeLanguage: null,
                 // Server-only confidential evaluation fields (NEVER sent to client)
-                sampleAnswer: 'A Hash Table maps keys to values using a hash function compute an index into an array of buckets. Collisions occur when two distinct keys produce the same hash index. Resolution techniques include Separate Chaining (linked lists at each bucket) and Open Addressing (probing for vacant slots). Average complexity: O(1); Worst-case: O(n).',
-                rubric: '3 marks for collision resolution explanations, 2 marks for complexity analysis.'
+                sampleAnswer: 'A Hash table computes an index using hash(key) % capacity. Collisions occur when different keys hash to the same bucket. Separate chaining maintains a linked list at each bucket (O(1) average, O(n) worst-case). Open addressing probes for empty slots.',
+                rubric: '2 marks for internal architecture and collision explanation, 3 marks for collision resolution strategies and complexity analysis.'
             },
             {
                 id: 'q-2',
@@ -93,8 +152,8 @@ const mockExams = {
                 title: 'Compare a standard Binary Search Tree (BST) with a self-balancing AVL Tree. Explain the balance factor invariant, and detail how rotation mechanisms (Single LL/RR rotations and Double LR/RL rotations) restore balance after an insertion. Why does this guarantee O(log n) worst-case search height?',
                 codeSnippet: null,
                 codeLanguage: null,
-                sampleAnswer: 'AVL trees enforce that for every node, the height difference between left and right subtrees is at most 1. Violations are fixed using 4 rotation types: LL, RR, LR, RL. This limits height to ~1.44 log2(n), guaranteeing O(log n) operations.',
-                rubric: '2 marks for balance factor definition, 2 marks for rotation mechanics, 1 mark for asymptotic height proof.'
+                sampleAnswer: 'BST can degenerate to O(n) skewed list. AVL maintains balance factor in {-1, 0, 1}. Single rotations fix LL/RR imbalances; double rotations fix LR/RL imbalances. This ensures tree height <= 1.44 log2(n), guaranteeing O(log n) operations.',
+                rubric: '2 marks for BST vs AVL comparison, 2 marks for rotation mechanics, 1 mark for mathematical logarithmic height guarantee.'
             },
             {
                 id: 'q-3',
@@ -105,7 +164,7 @@ const mockExams = {
                 marks: 5,
                 negativeMarks: 0,
                 title: 'Analyze the time and space complexity of the recursive Fibonacci function shown in the code snippet. Explain why it exhibits exponential O(2^n) time complexity, and describe how memoization (top-down) or tabulation (bottom-up dynamic programming) reduces the time complexity to O(n) and auxiliary space to O(1).',
-                codeSnippet: `def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n - 1) + fibonacci(n - 2)`,
+                codeSnippet: 'def fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n - 1) + fibonacci(n - 2)',
                 codeLanguage: 'python',
                 sampleAnswer: 'The naive recursion branches into two subproblems at each step, forming a recursion tree with O(2^n) nodes. Dynamic programming caches subproblems: bottom-up iteration using two variables achieves O(n) time and O(1) space.',
                 rubric: '2 marks for recursion tree complexity analysis, 3 marks for dynamic programming optimization.'
@@ -151,6 +210,7 @@ const mockExams = {
         totalMarks: 25,
         passingMarks: 12,
         proctorMode: 'AI Automated + Live Proctor',
+        isActive: false,
         instructions: [
             'This examination consists of 10 questions divided into three conceptual sections.',
             'Pay attention to the question type indicator: Single Choice (radio) vs Multiple Choice (checkbox).',
@@ -213,7 +273,7 @@ const mockExams = {
                 marks: 2,
                 negativeMarks: 0.5,
                 title: 'Consider the Python function below. What algorithm or pattern does it represent?',
-                codeSnippet: `def search_node(root, target):\n    if root is None or root.val == target:\n        return root\n    if target < root.val:\n        return search_node(root.left, target)\n    return search_node(root.right, target)`,
+                codeSnippet: 'def search_node(root, target):\n    if root is None or root.val == target:\n        return root\n    if target < root.val:\n        return search_node(root.left, target)\n    return search_node(root.right, target)',
                 codeLanguage: 'python',
                 options: [
                     { id: 'A', text: 'Breadth-First Search (BFS) level-order traversal' },
@@ -309,7 +369,7 @@ const mockExams = {
                 marks: 3,
                 negativeMarks: 0.5,
                 title: 'Examine the C implementation below for calculating the nth Fibonacci number. What is its auxiliary space complexity?',
-                codeSnippet: `int fibonacci(int n) {\n    if (n <= 1) return n;\n    int dp[n + 1];\n    dp[0] = 0;\n    dp[1] = 1;\n    for (int i = 2; i <= n; i++) {\n        dp[i] = dp[i - 1] + dp[i - 2];\n    }\n    return dp[n];\n}`,
+                codeSnippet: 'int fibonacci(int n) {\n    if (n <= 1) return n;\n    int dp[n + 1];\n    dp[0] = 0;\n    dp[1] = 1;\n    for (int i = 2; i <= n; i++) {\n        dp[i] = dp[i - 1] + dp[i - 2];\n    }\n    return dp[n];\n}',
                 codeLanguage: 'c',
                 options: [
                     { id: 'A', text: 'O(1) constant space' },
@@ -363,10 +423,177 @@ const mockExams = {
 };
 
 /**
+ * Seed initial sample examinations and questions into MongoDB Atlas
+ * Safe & Repeatable: Uses updateOne with upsert to prevent duplicate documents on repeated runs.
+ * @param {import('mongodb').Db} db
+ */
+async function seedInitialExams(db) {
+    if (!db) {
+        throw new Error('Database instance is required for seeding.');
+    }
+
+    const examsCollection = db.collection('exams');
+    const questionsCollection = db.collection('questions');
+
+    // Create unique indices for data integrity
+    await examsCollection.createIndex({ id: 1 }, { unique: true });
+    await questionsCollection.createIndex({ id: 1, examId: 1 }, { unique: true });
+    await questionsCollection.createIndex({ examId: 1, questionNumber: 1 });
+
+    const results = {
+        examsUpserted: 0,
+        questionsUpserted: 0
+    };
+
+    for (const examKey of Object.keys(SEED_EXAMS)) {
+        const sourceExam = SEED_EXAMS[examKey];
+
+        // 1. Upsert Exam metadata document
+        const examDoc = {
+            id: sourceExam.id,
+            title: sourceExam.title,
+            courseCode: sourceExam.courseCode,
+            courseName: sourceExam.courseName,
+            department: sourceExam.department,
+            academicTerm: sourceExam.academicTerm,
+            durationMinutes: sourceExam.durationMinutes,
+            totalMarks: sourceExam.totalMarks,
+            passingMarks: sourceExam.passingMarks,
+            proctorMode: sourceExam.proctorMode,
+            isActive: sourceExam.isActive ?? false,
+            instructions: sourceExam.instructions,
+            sections: sourceExam.sections,
+            updatedAt: new Date()
+        };
+
+        await examsCollection.updateOne(
+            { id: sourceExam.id },
+            { $set: examDoc, $setOnInsert: { createdAt: new Date() } },
+            { upsert: true }
+        );
+        results.examsUpserted++;
+
+        // 2. Upsert individual question documents
+        for (const q of sourceExam.questions) {
+            const questionDoc = {
+                id: q.id,
+                examId: sourceExam.id,
+                questionNumber: q.questionNumber,
+                sectionId: q.sectionId,
+                sectionName: q.sectionName,
+                type: q.type,
+                marks: q.marks,
+                negativeMarks: q.negativeMarks ?? 0,
+                title: q.title,
+                codeSnippet: q.codeSnippet ?? null,
+                codeLanguage: q.codeLanguage ?? null,
+                options: q.options ?? null,
+                // Sensitive fields stored in database
+                sampleAnswer: q.sampleAnswer ?? null,
+                rubric: q.rubric ?? null,
+                correctOption: q.correctOption ?? null,
+                correctOptions: q.correctOptions ?? null,
+                explanation: q.explanation ?? null,
+                updatedAt: new Date()
+            };
+
+            await questionsCollection.updateOne(
+                { id: q.id, examId: sourceExam.id },
+                { $set: questionDoc, $setOnInsert: { createdAt: new Date() } },
+                { upsert: true }
+            );
+            results.questionsUpserted++;
+        }
+    }
+
+    return results;
+}
+
+/**
+ * Retrieve active exam and its ordered questions from MongoDB
+ * @param {string} [examId] Specific exam ID or null for active exam
+ * @param {import('mongodb').Db} [customDb] Optional custom DB instance
+ * @returns {Promise<Object|null>} Raw exam object with questions
+ */
+async function getExamFromDb(examId = null, customDb = null) {
+    const db = customDb || await getDatabase();
+    if (!db) {
+        return null;
+    }
+
+    const examsCollection = db.collection('exams');
+    const questionsCollection = db.collection('questions');
+
+    // 1. Locate target exam
+    let exam = null;
+    if (examId) {
+        exam = await examsCollection.findOne({ id: examId });
+    } else {
+        // Find default active exam or first exam
+        exam = await examsCollection.findOne({ isActive: true });
+        if (!exam) {
+            exam = await examsCollection.findOne({});
+        }
+    }
+
+    if (!exam) {
+        return null;
+    }
+
+    // 2. Query questions ordered by questionNumber ascending
+    const questions = await questionsCollection
+        .find({ examId: exam.id })
+        .sort({ questionNumber: 1 })
+        .toArray();
+
+    // Attach ordered questions
+    exam.questions = questions;
+    return exam;
+}
+
+/**
+ * List all available exams with question counts from MongoDB
+ * @param {import('mongodb').Db} [customDb]
+ * @returns {Promise<Array<Object>>}
+ */
+async function getAllExamsFromDb(customDb = null) {
+    const db = customDb || await getDatabase();
+    if (!db) {
+        return [];
+    }
+
+    const examsCollection = db.collection('exams');
+    const questionsCollection = db.collection('questions');
+
+    const exams = await examsCollection.find({}).toArray();
+    const result = [];
+
+    for (const exam of exams) {
+        const count = await questionsCollection.countDocuments({ examId: exam.id });
+        result.push({
+            id: exam.id,
+            title: exam.title,
+            courseCode: exam.courseCode,
+            durationMinutes: exam.durationMinutes,
+            totalMarks: exam.totalMarks,
+            questionsCount: count
+        });
+    }
+
+    return result;
+}
+
+/**
  * Sanitizes an exam object for students:
- * Strictly strips confidential answer keys, sample answers, and evaluation rubrics.
+ * Strictly strips MongoDB _id, confidential answer keys, sample answers, and evaluation rubrics.
+ * @param {Object} exam
+ * @returns {Object} Sanitized exam object
  */
 function sanitizeExamForStudent(exam) {
+    if (!exam) return null;
+
+    const questions = Array.isArray(exam.questions) ? exam.questions : [];
+
     return {
         id: exam.id,
         title: exam.title,
@@ -378,293 +605,34 @@ function sanitizeExamForStudent(exam) {
         totalMarks: exam.totalMarks,
         passingMarks: exam.passingMarks,
         proctorMode: exam.proctorMode,
-        instructions: exam.instructions,
-        sections: exam.sections,
-        totalQuestions: exam.questions.length,
-        questions: exam.questions.map(q => ({
+        instructions: exam.instructions || [],
+        sections: exam.sections || [],
+        totalQuestions: questions.length,
+        questions: questions.map(q => ({
             id: q.id,
             questionNumber: q.questionNumber,
             sectionId: q.sectionId,
             sectionName: q.sectionName,
             type: q.type,
             marks: q.marks,
-            negativeMarks: q.negativeMarks,
+            negativeMarks: q.negativeMarks ?? 0,
             title: q.title,
-            codeSnippet: q.codeSnippet,
-            codeLanguage: q.codeLanguage,
-            options: q.options || null
+            codeSnippet: q.codeSnippet ?? null,
+            codeLanguage: q.codeLanguage ?? null,
+            options: q.options ?? null
         }))
     };
 }
 
-// Convenient redirects for student routing
-app.get('/exam', (req, res) => {
-    res.redirect('/Exam/index.html');
-});
-app.get('/login', (req, res) => {
-    res.redirect('/Student%20Login/Creating%20Login_UI/index.html');
-});
-
-// ============================================================
-// EXAM API ENDPOINTS (SCRUM-31: MongoDB Atlas Integration)
-// ============================================================
-
-// GET /api/exam/active — Returns active exam with sanitized questions
-app.get('/api/exam/active', async (req, res) => {
-    try {
-        const { simulate, examId, type } = req.query;
-
-        // Support test simulation of error states
-        if (simulate === 'error') {
-            return res.status(500).json({
-                success: false,
-                message: 'Internal server error while fetching assessment.'
-            });
-        }
-
-        // Support test simulation of empty states
-        if (simulate === 'empty') {
-            return res.status(200).json({
-                success: true,
-                exam: {
-                    id: 'EMPTY-EXAM',
-                    title: 'Empty Assessment Preview',
-                    courseCode: 'N/A',
-                    questions: []
-                }
-            });
-        }
-
-        const targetId = examId || (type === 'mcq' ? 'CS301-MCQ' : 'CS301-2026');
-
-        // 1. If MongoDB Atlas is configured, retrieve from database
-        if (isDatabaseConfigured()) {
-            try {
-                const dbExam = await getExamFromDb(targetId);
-                if (dbExam) {
-                    return res.status(200).json({
-                        success: true,
-                        source: 'mongodb',
-                        exam: sanitizeExamForStudent(dbExam)
-                    });
-                }
-                return res.status(404).json({
-                    success: false,
-                    message: `Examination '${targetId}' was not found in MongoDB.`
-                });
-            } catch (dbError) {
-                console.error('[AOVS Database] Query error on /api/exam/active:', dbError.message);
-                return res.status(500).json({
-                    success: false,
-                    message: 'Database error retrieving active examination.'
-                });
-            }
-        }
-
-        // 2. Fallback to server-side repository when MONGODB_URI is not set
-        const activeExam = mockExams[targetId] || mockExams['CS301-2026'];
-        if (!activeExam) {
-            return res.status(404).json({
-                success: false,
-                message: 'No active exam found.'
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            source: 'in-memory',
-            exam: sanitizeExamForStudent(activeExam)
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Server error retrieving active exam'
-        });
-    }
-});
-
-// GET /api/exams — List all available exams
-app.get('/api/exams', async (req, res) => {
-    try {
-        if (isDatabaseConfigured()) {
-            try {
-                const list = await getAllExamsFromDb();
-                return res.status(200).json({ success: true, source: 'mongodb', exams: list });
-            } catch (dbErr) {
-                console.error('[AOVS Database] Error listing exams from DB:', dbErr.message);
-                return res.status(500).json({ success: false, message: 'Database error retrieving exams.' });
-            }
-        }
-
-        const list = Object.values(mockExams).map(exam => ({
-            id: exam.id,
-            title: exam.title,
-            courseCode: exam.courseCode,
-            durationMinutes: exam.durationMinutes,
-            totalMarks: exam.totalMarks,
-            questionsCount: exam.questions ? exam.questions.length : 0
-        }));
-        res.status(200).json({ success: true, source: 'in-memory', exams: list });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Server error retrieving exams' });
-    }
-});
-
-// GET /api/exams/:id — Specific exam details
-app.get('/api/exams/:id', async (req, res) => {
-    try {
-        const examId = req.params.id;
-        if (isDatabaseConfigured()) {
-            try {
-                const dbExam = await getExamFromDb(examId);
-                if (!dbExam) {
-                    return res.status(404).json({
-                        success: false,
-                        message: `Exam with ID '${examId}' was not found in MongoDB.`
-                    });
-                }
-                return res.status(200).json({
-                    success: true,
-                    source: 'mongodb',
-                    exam: sanitizeExamForStudent(dbExam)
-                });
-            } catch (dbErr) {
-                console.error('[AOVS Database] Error getting exam from DB:', dbErr.message);
-                return res.status(500).json({ success: false, message: 'Database error retrieving exam.' });
-            }
-        }
-
-        const exam = mockExams[examId];
-        if (!exam) {
-            return res.status(404).json({
-                success: false,
-                message: `Exam with ID '${examId}' was not found.`
-            });
-        }
-        res.status(200).json({
-            success: true,
-            source: 'in-memory',
-            exam: sanitizeExamForStudent(exam)
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Server error retrieving exam' });
-    }
-});
-
-// POST /api/exams/:id/submit — Submit student responses
-app.post('/api/exams/:id/submit', async (req, res) => {
-    try {
-        const { studentId, answers, timeSpentSeconds } = req.body;
-        const examId = req.params.id;
-
-        if (!studentId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Student ID is required for submission.'
-            });
-        }
-
-        const exam = (isDatabaseConfigured() ? await getExamFromDb(examId) : null) || mockExams[examId] || mockExams['CS301-2026'];
-        const submissionId = `SUB-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
-        const submissionRecord = {
-            submissionId,
-            examId,
-            studentId,
-            answers: answers || {},
-            timeSpentSeconds: timeSpentSeconds || 0,
-            submittedAt: new Date().toISOString()
-        };
-
-        if (isDatabaseConfigured()) {
-            try {
-                const db = await getDatabase();
-                if (db) {
-                    await db.collection('submissions').insertOne(submissionRecord);
-                }
-            } catch (dbErr) {
-                console.warn('[AOVS Database] Could not persist submission to MongoDB:', dbErr.message);
-            }
-        }
-
-        res.status(200).json({
-            success: true,
-            message: 'Exam submitted successfully.',
-            receipt: {
-                submissionId,
-                examTitle: exam ? exam.title : 'Examination',
-                studentId,
-                questionsCount: exam && exam.questions ? exam.questions.length : 0,
-                answeredCount: Object.keys(answers || {}).length,
-                submittedAt: new Date().toLocaleTimeString()
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'An error occurred while submitting your responses.'
-        });
-    }
-});
-
-// ============================================================
-// STUDENT LOGIN ENDPOINT (Existing - preserved intact)
-// ============================================================
-app.post('/api/college/login', (req, res) => {
-    try {
-        const { studentId, password } = req.body;
-
-        if (!studentId || !password) {
-            return res.status(400).json({
-                success: false,
-                message: "Missing student ID or password"
-            });
-        }
-
-        if (studentId === TEST_STUDENT_ID && password === TEST_PASSWORD) {
-            return res.status(200).json({
-                success: true,
-                message: "Authentication successful",
-                student: {
-                    studentId: TEST_STUDENT_ID
-                }
-            });
-        } else {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid student ID or password"
-            });
-        }
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Internal server error"
-        });
-    }
-});
-
-// Handle malformed JSON
-app.use((err, req, res, next) => {
-    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-        return res.status(400).json({
-            success: false,
-            message: "Malformed request"
-        });
-    }
-    next();
-});
-
-const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`AOVS Mock Assessment & College Login Service running on port ${PORT}`);
-});
-
-// Support port 5500 mirror for Playwright tests and local live-server compatibility
-try {
-    const mirrorServer = app.listen(5500, '0.0.0.0', () => {
-        console.log(`AOVS Static & Test Mirror active on port 5500`);
-    });
-    mirrorServer.on('error', (err) => {
-        // Port 5500 already bound, ignore gracefully
-    });
-} catch (e) {}
-
-module.exports = server;
+module.exports = {
+    getMongoClient,
+    getDatabase,
+    closeDatabaseConnection,
+    isDatabaseConfigured,
+    maskMongoUri,
+    seedInitialExams,
+    getExamFromDb,
+    getAllExamsFromDb,
+    sanitizeExamForStudent,
+    SEED_EXAMS
+};
