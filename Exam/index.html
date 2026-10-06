@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AOVS — Examination Interface</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+    <!-- App Container -->
+    <div class="exam-app" id="examApp">
+
+        <!-- Top Header Navigation Bar -->
+        <header class="exam-header" id="examHeader">
+            <div class="header-left">
+                <a href="../Student%20Login/Creating%20Login_UI/index.html" class="brand-logo" title="Back to Student Portal">
+                    <i class="fa-solid fa-graduation-cap logo-icon"></i>
+                    <span class="brand-name">AOVS</span>
+                    <span class="brand-tag">ASSESSMENT</span>
+                </a>
+                <div class="header-divider"></div>
+                <div class="exam-metadata">
+                    <h1 class="exam-title" id="examTitle">Loading Assessment...</h1>
+                    <div class="exam-subtitle">
+                        <span class="course-code" id="courseCode">CS-301</span>
+                        <span class="meta-dot">•</span>
+                        <span class="academic-term" id="academicTerm">Certification Exam</span>
+                        <span class="meta-dot">•</span>
+                        <span class="total-marks-badge" id="totalMarksBadge">25 Marks</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="header-center">
+                <!-- Live Countdown Timer -->
+                <div class="timer-widget" id="timerWidget" title="Time Remaining">
+                    <div class="timer-icon-wrap">
+                        <i class="fa-regular fa-clock timer-icon"></i>
+                    </div>
+                    <div class="timer-content">
+                        <span class="timer-label">TIME REMAINING</span>
+                        <span class="timer-display" id="timerDisplay">45:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <!-- Proctoring Status Badges -->
+                <div class="proctor-status" id="proctorStatus" title="System Proctoring Active">
+                    <span class="status-pulse"></span>
+                    <i class="fa-solid fa-shield-halved proctor-icon"></i>
+                    <span class="proctor-label">AI Proctor Active</span>
+                </div>
+
+                <!-- Fullscreen Toggle -->
+                <button type="button" class="icon-btn" id="fullscreenToggleBtn" title="Toggle Fullscreen" aria-label="Toggle Fullscreen">
+                    <i class="fa-solid fa-expand"></i>
+                </button>
+
+                <!-- Instructions Button -->
+                <button type="button" class="icon-btn" id="instructionsBtn" title="Exam Instructions" aria-label="Exam Instructions">
+                    <i class="fa-solid fa-circle-info"></i>
+                </button>
+
+                <!-- Mobile Palette Toggle Button -->
+                <button type="button" class="mobile-palette-toggle" id="mobilePaletteToggle" aria-label="Open Question Palette">
+                    <i class="fa-solid fa-table-cells"></i>
+                    <span class="palette-counter-badge" id="mobilePaletteBadge">1/10</span>
+                </button>
+
+                <!-- Student Profile Card -->
+                <div class="student-profile" id="studentProfile">
+                    <div class="student-avatar" id="studentAvatar">AK</div>
+                    <div class="student-info">
+                        <span class="student-name" id="studentName">Akil Kumar</span>
+                        <span class="student-id" id="studentId">TEST001</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Examination Content Area -->
+        <main class="exam-body" id="examBody">
+
+            <!-- Loading State Skeleton -->
+            <div class="state-container state-loading" id="loadingState">
+                <div class="skeleton-main">
+                    <div class="skeleton-header">
+                        <div class="skeleton-pill shimmer"></div>
+                        <div class="skeleton-pill-sm shimmer"></div>
+                    </div>
+                    <div class="skeleton-question shimmer"></div>
+                    <div class="skeleton-question shimmer" style="width: 70%;"></div>
+                    <div class="skeleton-options">
+                        <div class="skeleton-option shimmer"></div>
+                        <div class="skeleton-option shimmer"></div>
+                        <div class="skeleton-option shimmer"></div>
+                        <div class="skeleton-option shimmer"></div>
+                    </div>
+                    <div class="skeleton-actions">
+                        <div class="skeleton-btn shimmer"></div>
+                        <div class="skeleton-btn shimmer"></div>
+                    </div>
+                </div>
+                <div class="skeleton-sidebar">
+                    <div class="skeleton-side-card shimmer"></div>
+                    <div class="skeleton-grid">
+                        <div class="skeleton-grid-cell shimmer"></div>
+                        <div class="skeleton-grid-cell shimmer"></div>
+                        <div class="skeleton-grid-cell shimmer"></div>
+                        <div class="skeleton-grid-cell shimmer"></div>
+                        <div class="skeleton-grid-cell shimmer"></div>
+                        <div class="skeleton-grid-cell shimmer"></div>
+                        <div class="skeleton-grid-cell shimmer"></div>
+                        <div class="skeleton-grid-cell shimmer"></div>
+                        <div class="skeleton-grid-cell shimmer"></div>
+                        <div class="skeleton-grid-cell shimmer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error State UI -->
+            <div class="state-container state-error hidden" id="errorState">
+                <div class="state-card error-card">
+                    <div class="state-icon-wrap error-icon">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <h2 class="state-title">Unable to Load Assessment</h2>
+                    <p class="state-message" id="errorMessage">Could not connect to the AOVS exam service. Please verify the backend server is running and try again.</p>
+                    <div class="state-actions">
+                        <button type="button" class="btn btn-primary" id="retryLoadBtn">
+                            <i class="fa-solid fa-rotate"></i> Retry Connection
+                        </button>
+                        <a href="../Student%20Login/Creating%20Login_UI/index.html" class="btn btn-secondary">
+                            <i class="fa-solid fa-arrow-left"></i> Return to Login
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State UI -->
+            <div class="state-container state-empty hidden" id="emptyState">
+                <div class="state-card empty-card">
+                    <div class="state-icon-wrap empty-icon">
+                        <i class="fa-regular fa-folder-open"></i>
+                    </div>
+                    <h2 class="state-title">No Questions Available</h2>
+                    <p class="state-message">There are currently no questions published for this assessment session.</p>
+                    <div class="state-actions">
+                        <button type="button" class="btn btn-primary" id="refreshEmptyBtn">
+                            <i class="fa-solid fa-rotate"></i> Refresh Assessment
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Exam Workspace -->
+            <div class="exam-workspace hidden" id="examWorkspace">
+
+                <!-- Left Section: Question Card & Controls -->
+                <section class="question-workspace" id="questionWorkspace" aria-labelledby="questionHeading">
+
+                    <!-- Question Card Container -->
+                    <article class="question-card" id="questionCard">
+
+                        <!-- Question Top Metadata Bar -->
+                        <div class="question-top-bar">
+                            <div class="question-meta-group">
+                                <span class="question-badge-number" id="questionNumberBadge">Question 1 of 10</span>
+                                <span class="question-badge-section" id="questionSectionBadge">Section 1</span>
+                                <span class="question-badge-type" id="questionTypeBadge">Single Choice</span>
+                            </div>
+
+                            <div class="question-scoring-group">
+                                <span class="marks-pill" id="questionMarksPill">
+                                    <i class="fa-solid fa-award"></i>
+                                    <span id="questionMarksValue">+2.00 Marks</span>
+                                </span>
+                                <span class="negative-marks-pill" id="questionNegativeMarksPill" title="Negative mark deduction for incorrect answer">
+                                    <span id="questionNegativeValue">-0.50</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar Indicating Overall Exam Position -->
+                        <div class="progress-track" aria-hidden="true">
+                            <div class="progress-bar-fill" id="progressBarFill" style="width: 10%;"></div>
+                        </div>
+
+                        <!-- Question Prompt / Statement -->
+                        <div class="question-content-box">
+                            <h2 class="question-heading" id="questionHeading">
+                                <!-- Dynamic Question Text Inserted Here -->
+                            </h2>
+
+                            <!-- Optional Code Snippet Block -->
+                            <div class="code-snippet-container hidden" id="codeSnippetContainer">
+                                <div class="code-snippet-header">
+                                    <span class="code-lang-label" id="codeLangLabel">Code Snippet</span>
+                                    <button type="button" class="copy-code-btn" id="copyCodeBtn" title="Copy Code Snippet">
+                                        <i class="fa-regular fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                                <pre class="code-snippet-pre"><code id="codeSnippetContent"></code></pre>
+                            </div>
+                        </div>
+
+                        <!-- Answer Options Container -->
+                        <div class="options-container" id="optionsContainer" role="radiogroup" aria-labelledby="questionHeading">
+                            <!-- Dynamic Options (Radio or Checkbox) Injected Here -->
+                        </div>
+
+                        <!-- Selection Summary Notice -->
+                        <div class="selection-notice" id="selectionNotice">
+                            <i class="fa-solid fa-circle-check selection-notice-icon"></i>
+                            <span id="selectionNoticeText">Option selected</span>
+                        </div>
+
+                    </article>
+
+                    <!-- Bottom Action Controls Bar -->
+                    <footer class="action-bar" id="actionBar">
+                        <div class="action-left">
+                            <button type="button" class="btn btn-outline" id="prevBtn" disabled>
+                                <i class="fa-solid fa-chevron-left"></i> Previous
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="clearBtn" title="Clear your selected answer for this question">
+                                <i class="fa-solid fa-rotate-left"></i> Clear Response
+                            </button>
+                        </div>
+
+                        <div class="action-right">
+                            <button type="button" class="btn btn-warning" id="markReviewBtn" title="Bookmark this question for review">
+                                <i class="fa-regular fa-bookmark" id="markReviewIcon"></i>
+                                <span id="markReviewText">Mark for Review</span>
+                            </button>
+                            <button type="button" class="btn btn-primary" id="nextBtn">
+                                <span id="nextBtnText">Save &amp; Next</span>
+                                <i class="fa-solid fa-chevron-right" id="nextBtnIcon"></i>
+                            </button>
+                        </div>
+                    </footer>
+
+                </section>
+
+                <!-- Right Section: Numbered Question Palette & Exam Dashboard -->
+                <aside class="palette-sidebar" id="paletteSidebar" aria-label="Question Palette and Navigation">
+
+                    <!-- Mobile Drawer Close Header (Shown on small screens) -->
+                    <div class="mobile-drawer-header">
+                        <h3 class="drawer-title"><i class="fa-solid fa-table-cells"></i> Question Palette</h3>
+                        <button type="button" class="drawer-close-btn" id="drawerCloseBtn" aria-label="Close Question Palette">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <!-- Exam Session Overview Card -->
+                    <div class="palette-overview-card">
+                        <div class="overview-header">
+                            <span class="overview-title">Question Palette</span>
+                            <span class="overview-sub" id="paletteTotalSummary">10 Total Questions</span>
+                        </div>
+
+                        <!-- Live Summary Statistics Grid -->
+                        <div class="palette-stats-grid">
+                            <div class="stat-box stat-answered" title="Questions Answered">
+                                <span class="stat-number" id="statAnsweredCount">0</span>
+                                <span class="stat-label">Answered</span>
+                            </div>
+                            <div class="stat-box stat-unanswered" title="Questions Visited but Unanswered">
+                                <span class="stat-number" id="statUnansweredCount">0</span>
+                                <span class="stat-label">Unanswered</span>
+                            </div>
+                            <div class="stat-box stat-marked" title="Marked for Review">
+                                <span class="stat-number" id="statMarkedCount">0</span>
+                                <span class="stat-label">Marked</span>
+                            </div>
+                            <div class="stat-box stat-notvisited" title="Not Visited">
+                                <span class="stat-number" id="statNotVisitedCount">10</span>
+                                <span class="stat-label">Not Visited</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Question Grid Filter Tabs -->
+                    <div class="palette-filter-bar">
+                        <button type="button" class="filter-chip active" data-filter="all">All</button>
+                        <button type="button" class="filter-chip" data-filter="answered">Answered</button>
+                        <button type="button" class="filter-chip" data-filter="unanswered">Unanswered</button>
+                        <button type="button" class="filter-chip" data-filter="marked">Marked</button>
+                    </div>
+
+                    <!-- Numbered Question Palette Grid -->
+                    <div class="palette-grid-container">
+                        <div class="palette-grid" id="questionPaletteGrid" role="navigation" aria-label="Questions list">
+                            <!-- Dynamic Question Palette Items (1 to N) Injected Here -->
+                        </div>
+                    </div>
+
+                    <!-- Palette Legend -->
+                    <div class="palette-legend">
+                        <div class="legend-item">
+                            <span class="legend-swatch swatch-current"></span>
+                            <span class="legend-text">Current</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-swatch swatch-answered"></span>
+                            <span class="legend-text">Answered</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-swatch swatch-unanswered"></span>
+                            <span class="legend-text">Unanswered</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-swatch swatch-marked"></span>
+                            <span class="legend-text">Marked for Review</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-swatch swatch-answered-marked"></span>
+                            <span class="legend-text">Answered &amp; Marked</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-swatch swatch-notvisited"></span>
+                            <span class="legend-text">Not Visited</span>
+                        </div>
+                    </div>
+
+                    <!-- Submit Exam Action Button -->
+                    <div class="palette-footer">
+                        <button type="button" class="btn btn-submit" id="submitExamBtn">
+                            <i class="fa-solid fa-paper-plane"></i> Submit Examination
+                        </button>
+                    </div>
+
+                </aside>
+
+            </div>
+
+        </main>
+
+    </div>
+
+    <!-- Mobile Drawer Overlay Backdrop -->
+    <div class="drawer-backdrop hidden" id="drawerBackdrop"></div>
+
+    <!-- ========================================== -->
+    <!-- MODALS                                      -->
+    <!-- ========================================== -->
+
+    <!-- Instructions Modal -->
+    <div class="modal-backdrop hidden" id="instructionsModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <i class="fa-solid fa-circle-info modal-title-icon"></i>
+                    <h3 class="modal-title">Assessment Guidelines &amp; Instructions</h3>
+                </div>
+                <button type="button" class="modal-close-btn" id="closeInstructionsBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <ul class="instructions-list" id="instructionsList">
+                    <!-- Injected dynamically -->
+                </ul>
+                <div class="shortcut-tips">
+                    <h4>Keyboard Shortcuts</h4>
+                    <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>→</kbd> / <kbd>N</kbd> : Next Question</div>
+                    <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>←</kbd> / <kbd>P</kbd> : Previous Question</div>
+                    <div class="shortcut-item"><kbd>Alt</kbd> + <kbd>M</kbd> : Mark for Review</div>
+                    <div class="shortcut-item"><kbd>1</kbd> - <kbd>4</kbd> / <kbd>A</kbd> - <kbd>D</kbd> : Select Option</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="confirmInstructionsBtn">Got It, Continue Exam</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Confirmation Modal -->
+    <div class="modal-backdrop hidden" id="submitConfirmModal">
+        <div class="modal-card submit-modal">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <i class="fa-solid fa-triangle-exclamation modal-title-icon warning"></i>
+                    <h3 class="modal-title">Confirm Exam Submission</h3>
+                </div>
+                <button type="button" class="modal-close-btn" id="closeSubmitModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="submit-warning-text">
+                    Are you sure you want to submit your examination? Once submitted, you cannot change any of your responses.
+                </p>
+
+                <!-- Detailed Summary Table -->
+                <div class="submit-summary-grid">
+                    <div class="summary-card">
+                        <span class="sum-value" id="modalTotalQuestions">10</span>
+                        <span class="sum-label">Total Questions</span>
+                    </div>
+                    <div class="summary-card answered">
+                        <span class="sum-value" id="modalAnsweredQuestions">0</span>
+                        <span class="sum-label">Answered</span>
+                    </div>
+                    <div class="summary-card unanswered">
+                        <span class="sum-value" id="modalUnansweredQuestions">10</span>
+                        <span class="sum-label">Unanswered</span>
+                    </div>
+                    <div class="summary-card marked">
+                        <span class="sum-value" id="modalMarkedQuestions">0</span>
+                        <span class="sum-label">Marked for Review</span>
+                    </div>
+                </div>
+
+                <div class="unanswered-alert hidden" id="unansweredAlert">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span>Notice: You have unanswered questions remaining.</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelSubmitBtn">
+                    <i class="fa-solid fa-arrow-left"></i> Return to Exam
+                </button>
+                <button type="button" class="btn btn-submit-final" id="finalConfirmSubmitBtn">
+                    <i class="fa-solid fa-check"></i> Yes, Submit Final Responses
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exam Submission Success Receipt Modal -->
+    <div class="modal-backdrop hidden" id="receiptModal">
+        <div class="modal-card receipt-modal">
+            <div class="receipt-icon-wrap">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h2 class="receipt-title">Examination Submitted Successfully</h2>
+            <p class="receipt-message">Your responses have been securely encrypted and submitted to the evaluation server.</p>
+
+            <div class="receipt-details">
+                <div class="receipt-row">
+                    <span class="receipt-label">Submission ID:</span>
+                    <span class="receipt-val font-mono" id="receiptSubmissionId">SUB-XXXXX</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Student ID:</span>
+                    <span class="receipt-val" id="receiptStudentId">TEST001</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Total Questions:</span>
+                    <span class="receipt-val" id="receiptTotalQ">10</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Answered Questions:</span>
+                    <span class="receipt-val" id="receiptAnsweredQ">0</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Submission Timestamp:</span>
+                    <span class="receipt-val" id="receiptTimestamp">--:--:--</span>
+                </div>
+            </div>
+
+            <div class="receipt-actions">
+                <a href="../Student%20Login/Creating%20Login_UI/index.html" class="btn btn-primary">
+                    <i class="fa-solid fa-house"></i> Return to Student Portal
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main JavaScript Logic -->
+    <script src="exam.js"></script>
+</body>
+</html>
