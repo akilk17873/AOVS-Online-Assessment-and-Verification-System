@@ -4,7 +4,7 @@ test.describe('SCRUM-25: Exam Question Layout & Taking Interface', () => {
 
     test.beforeEach(async ({ page }) => {
         // Exam portal runs on port 3000 (and mirrored on 5500)
-        await page.goto('http://127.0.0.1:3000/Exam/index.html');
+        await page.goto('http://127.0.0.1:3000/Exam/index.html?examId=CS301-MCQ');
         // Wait until workspace is rendered and active
         await expect(page.locator('#examWorkspace')).toBeVisible();
     });

@@ -57,6 +57,11 @@
         codeSnippetContent: document.getElementById('codeSnippetContent'),
         copyCodeBtn: document.getElementById('copyCodeBtn'),
         optionsContainer: document.getElementById('optionsContainer'),
+        writtenAnswerContainer: document.getElementById('writtenAnswerContainer'),
+        writtenAnswerInput: document.getElementById('writtenAnswerInput'),
+        writtenWordCount: document.getElementById('writtenWordCount'),
+        writtenCharCount: document.getElementById('writtenCharCount'),
+        saveStatusIndicator: document.getElementById('saveStatusIndicator'),
         selectionNotice: document.getElementById('selectionNotice'),
         selectionNoticeText: document.getElementById('selectionNoticeText'),
 
@@ -254,12 +259,57 @@
     }
 
     /**
+     * Helpers for written-answer questions (SCRUM-9)
+     */
+    function countWords(str) {
+        if (!str || typeof str !== 'string') return 0;
+        const trimmed = str.trim();
+        if (!trimmed) return 0;
+        return trimmed.split(/\s+/).length;
+    }
+
+    function updateWrittenCounts(text) {
+        const chars = text ? text.length : 0;
+        const words = countWords(text);
+        if (elements.writtenWordCount) {
+            elements.writtenWordCount.textContent = `${words} word${words === 1 ? '' : 's'}`;
+        }
+        if (elements.writtenCharCount) {
+            elements.writtenCharCount.textContent = `${chars} character${chars === 1 ? '' : 's'}`;
+        }
+    }
+
+    function isWrittenQuestion(q) {
+        if (!q) return false;
+        return q.type === 'written' || q.type === 'written_answer' || q.type === 'text' || q.type === 'subjective' || !Array.isArray(q.options) || q.options.length === 0;
+    }
+
+    function saveActiveWrittenAnswer() {
+        if (questions.length === 0 || currentIndex < 0 || currentIndex >= questions.length) return;
+        const q = questions[currentIndex];
+        if (isWrittenQuestion(q) && elements.writtenAnswerInput) {
+            const text = elements.writtenAnswerInput.value;
+            if (text && text.trim().length > 0) {
+                answers[q.id] = text;
+            } else {
+                delete answers[q.id];
+            }
+        }
+    }
+
+    /**
      * Render current question in main workspace
      */
     function renderCurrentQuestion() {
         if (questions.length === 0 || currentIndex < 0 || currentIndex >= questions.length) return;
 
         const q = questions[currentIndex];
+        if (!q) return;
+
+        // Ensure safe ID
+        if (!q.id) {
+            q.id = 'q_' + (currentIndex + 1);
+        }
         visited[q.id] = true;
 
         // 1. Question Number & Progress
@@ -276,7 +326,12 @@
             elements.questionSectionBadge.textContent = q.sectionName || `Section ${q.sectionId || 1}`;
         }
         if (elements.questionTypeBadge) {
-            if (q.type === 'multiple_choice') {
+            if (isWrittenQuestion(q)) {
+                elements.questionTypeBadge.textContent = 'Written Answer';
+                elements.questionTypeBadge.style.color = 'var(--accent-emerald)';
+                elements.questionTypeBadge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                elements.questionTypeBadge.style.backgroundColor = 'rgba(16, 185, 129, 0.12)';
+            } else if (q.type === 'multiple_choice') {
                 elements.questionTypeBadge.textContent = 'Multiple Choice (Select all that apply)';
                 elements.questionTypeBadge.style.color = 'var(--accent-cyan)';
                 elements.questionTypeBadge.style.borderColor = 'rgba(6, 182, 212, 0.3)';
@@ -291,7 +346,13 @@
 
         // 3. Marks & Negative Marks
         if (elements.questionMarksValue) {
-            elements.questionMarksValue.textContent = `+${Number(q.marks || 1).toFixed(2)} Marks`;
+            if (q.marks !== undefined && q.marks !== null) {
+                elements.questionMarksValue.textContent = `+${Number(q.marks).toFixed(2)} Marks`;
+                elements.questionMarksValue.parentElement?.classList.remove('hidden');
+            } else {
+                elements.questionMarksValue.textContent = '';
+                elements.questionMarksValue.parentElement?.classList.add('hidden');
+            }
         }
         if (elements.questionNegativeMarksPill) {
             if (q.negativeMarks) {
@@ -306,11 +367,11 @@
 
         // 4. Question Heading Text
         if (elements.questionHeading) {
-            elements.questionHeading.textContent = q.title || '';
+            elements.questionHeading.textContent = (q.title && typeof q.title === 'string') ? q.title : 'Question statement not available.';
         }
 
         // 5. Code Snippet (if available)
-        if (q.codeSnippet && q.codeSnippet.trim() !== '') {
+        if (q.codeSnippet && typeof q.codeSnippet === 'string' && q.codeSnippet.trim() !== '') {
             elements.codeSnippetContainer.classList.remove('hidden');
             if (elements.codeSnippetContent) elements.codeSnippetContent.textContent = q.codeSnippet;
             if (elements.codeLangLabel) elements.codeLangLabel.textContent = (q.codeLanguage || 'Code Snippet').toUpperCase();
@@ -318,8 +379,23 @@
             elements.codeSnippetContainer.classList.add('hidden');
         }
 
-        // 6. Options rendering (Radio or Checkbox)
-        renderOptions(q);
+        // 6. Response Input Rendering (Written Answer Textarea vs MCQ Options)
+        if (isWrittenQuestion(q)) {
+            if (elements.optionsContainer) elements.optionsContainer.classList.add('hidden');
+            if (elements.writtenAnswerContainer) elements.writtenAnswerContainer.classList.remove('hidden');
+
+            const savedText = (typeof answers[q.id] === 'string') ? answers[q.id] : '';
+            if (elements.writtenAnswerInput) {
+                elements.writtenAnswerInput.value = savedText;
+            }
+            updateWrittenCounts(savedText);
+            updateSelectionNotice(q);
+        } else {
+            if (elements.writtenAnswerContainer) elements.writtenAnswerContainer.classList.add('hidden');
+            if (elements.optionsContainer) elements.optionsContainer.classList.remove('hidden');
+
+            renderOptions(q);
+        }
 
         // 7. Navigation Buttons State
         updateNavigationButtons();
@@ -456,7 +532,13 @@
         if (!q) return;
 
         delete answers[q.id];
-        renderOptions(q);
+        if (isWrittenQuestion(q)) {
+            if (elements.writtenAnswerInput) elements.writtenAnswerInput.value = '';
+            updateWrittenCounts('');
+            if (elements.selectionNotice) elements.selectionNotice.classList.remove('show');
+        } else {
+            renderOptions(q);
+        }
         updatePaletteItemStates();
         updateStatsCounters();
         persistCurrentState();
@@ -521,6 +603,10 @@
      */
     function updateSelectionNotice(question) {
         if (!elements.selectionNotice) return;
+        if (isWrittenQuestion(question)) {
+            elements.selectionNotice.classList.remove('show');
+            return;
+        }
         const currentAnswer = answers[question.id];
 
         if (currentAnswer && (typeof currentAnswer === 'string' || currentAnswer.length > 0)) {
@@ -540,6 +626,7 @@
      */
     function goToQuestion(index) {
         if (index < 0 || index >= questions.length) return;
+        saveActiveWrittenAnswer();
         currentIndex = index;
         renderCurrentQuestion();
 
@@ -743,6 +830,7 @@
      * Submit Examination Flow
      */
     function openSubmitModal() {
+        saveActiveWrittenAnswer();
         let answered = 0;
         let unanswered = 0;
         let marked = 0;
@@ -779,6 +867,7 @@
     }
 
     async function submitExamResponses() {
+        saveActiveWrittenAnswer();
         closeSubmitModal();
         showLoadingState();
 
@@ -970,6 +1059,24 @@
         if (elements.nextBtn) elements.nextBtn.addEventListener('click', goToNextQuestion);
         if (elements.clearBtn) elements.clearBtn.addEventListener('click', clearCurrentResponse);
         if (elements.markReviewBtn) elements.markReviewBtn.addEventListener('click', toggleMarkForReview);
+
+        // Written Answer Textarea Input (SCRUM-9)
+        if (elements.writtenAnswerInput) {
+            elements.writtenAnswerInput.addEventListener('input', (e) => {
+                const q = questions[currentIndex];
+                if (!q || !isWrittenQuestion(q)) return;
+                const text = e.target.value;
+                if (text && text.trim().length > 0) {
+                    answers[q.id] = text;
+                } else {
+                    delete answers[q.id];
+                }
+                updateWrittenCounts(text);
+                updatePaletteItemStates();
+                updateStatsCounters();
+                persistCurrentState();
+            });
+        }
 
         // Submit Examination
         if (elements.submitExamBtn) elements.submitExamBtn.addEventListener('click', openSubmitModal);

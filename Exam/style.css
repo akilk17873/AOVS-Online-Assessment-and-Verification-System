@@ -603,6 +603,100 @@ html, body {
 }
 
 /* ============================================================
+   WRITTEN-ANSWER INPUT (SCRUM-9)
+   ============================================================ */
+.written-answer-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    transition: all var(--transition-fast);
+}
+
+.written-answer-container:focus-within {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 16px var(--accent-cyan-glow);
+}
+
+.written-answer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.written-answer-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.written-answer-counts {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.counts-dot {
+    color: var(--border-subtle);
+}
+
+.written-answer-textarea {
+    width: 100%;
+    min-height: 220px;
+    background: #0d0d12;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+    transition: all var(--transition-fast);
+    box-sizing: border-box;
+}
+
+.written-answer-textarea:focus {
+    border-color: var(--accent-cyan);
+    background: #101017;
+}
+
+.written-answer-textarea::placeholder {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.written-answer-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.save-status-indicator {
+    font-size: 12px;
+    color: var(--accent-emerald);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.85;
+}
+
+/* ============================================================
    ANSWER OPTIONS
    ============================================================ */
 .options-container {
