@@ -93,6 +93,14 @@ const NavBar = () => {
               rightIcon={<TiLocationArrow />}
               containerClass="bg-[#edff66] md:flex hidden items-center justify-center gap-1 font-semibold text-black hover:bg-yellow-300"
             />
+
+            <Button
+              id="exam-portal-btn"
+              title="Exam Portal"
+              href="/Exam/index.html"
+              rightIcon={<TiLocationArrow />}
+              containerClass="bg-[#06b6d4] md:flex hidden items-center justify-center gap-1 font-semibold text-black hover:bg-cyan-300"
+            />
           </div>
 
           {/* Navigation Links and Audio Button */}
@@ -115,6 +123,14 @@ const NavBar = () => {
               href="/Student Login/Creating Login_UI/index.html"
               rightIcon={<TiLocationArrow />}
               containerClass="bg-[#edff66] md:hidden flex items-center justify-center gap-1 text-xs py-1.5 px-3 font-semibold text-black"
+            />
+
+            <Button
+              id="exam-portal-mobile"
+              title="Exam"
+              href="/Exam/index.html"
+              rightIcon={<TiLocationArrow />}
+              containerClass="bg-[#06b6d4] md:hidden flex items-center justify-center gap-1 text-xs py-1.5 px-3 font-semibold text-black ml-1"
             />
 
             <button

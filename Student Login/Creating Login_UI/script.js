@@ -48,6 +48,20 @@ document.getElementById('loginForm').addEventListener('submit', function(event) 
             if (status === 200) {
                 successMessage.textContent = data.message || 'Authentication successful';
                 successMessage.style.color = '#10b981'; // Success color
+
+                // Store student details in session
+                try {
+                    sessionStorage.setItem('aovs_student', JSON.stringify({
+                        studentId: studentId,
+                        name: (data.student && data.student.name) ? data.student.name : 'Akil Kumar'
+                    }));
+                } catch(e) {}
+
+                // Reveal launch button
+                const launchBtn = document.getElementById('launchExamBtn');
+                if (launchBtn) {
+                    launchBtn.style.display = 'block';
+                }
             } else if (status === 401) {
                 successMessage.textContent = 'Invalid student ID or password';
                 successMessage.style.color = '#ef4444'; // Error color
