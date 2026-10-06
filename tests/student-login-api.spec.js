@@ -9,11 +9,14 @@ test.describe('Student Login Authentication API Integration', () => {
     test('TC01 - successful authentication', async ({ page }) => {
         await page.getByLabel(/student id/i).fill('TEST001');
         await page.getByLabel(/password/i).fill('Test@123');
-        
+
         // Wait for the response to verify API is hit and succeeds
-        const responsePromise = page.waitForResponse('**/api/college/login');
+        const responsePromise = page.waitForResponse(
+            response => response.url().includes('/api/college/login') &&
+                response.request().method() === 'POST'
+        );
         await page.getByRole('button', { name: /login/i }).click();
-        
+
         const response = await responsePromise;
         expect(response.status()).toBe(200);
 
@@ -24,10 +27,10 @@ test.describe('Student Login Authentication API Integration', () => {
     test('TC02 - invalid credentials', async ({ page }) => {
         await page.getByLabel(/student id/i).fill('WRONG');
         await page.getByLabel(/password/i).fill('WRONG');
-        
+
         const responsePromise = page.waitForResponse('**/api/college/login');
         await page.getByRole('button', { name: /login/i }).click();
-        
+
         const response = await responsePromise;
         expect(response.status()).toBe(401);
 
