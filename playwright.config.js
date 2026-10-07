@@ -5,7 +5,8 @@ module.exports = defineConfig({
 
     use: {
         browserName: 'chromium',
-        headless: true
+        headless: true,
+        baseURL: 'http://localhost:3000'
     },
 
     reporter: 'html'

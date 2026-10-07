@@ -606,6 +606,109 @@ app.post('/api/exams/:id/submit', async (req, res) => {
     }
 });
 
+// POST /api/exam/answers — Submit a single written answer (SCRUM-10)
+app.post('/api/exam/answers', async (req, res) => {
+    try {
+        const { studentId, examId, questionId, answerText } = req.body;
+
+        if (!studentId || !examId || !questionId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields: studentId, examId, and questionId are required.'
+            });
+        }
+
+        // Validate exam exists
+        const dbExam = isDatabaseConfigured() ? await getExamFromDb(examId) : mockExams[examId];
+        if (!dbExam) {
+            return res.status(404).json({ success: false, message: 'Invalid exam ID.' });
+        }
+
+        // Validate question belongs to exam
+        const question = dbExam.questions.find(q => q.id === questionId);
+        if (!question) {
+            return res.status(400).json({ success: false, message: 'Question does not belong to the specified exam.' });
+        }
+
+        const answerRecord = {
+            studentId,
+            examId,
+            questionId,
+            answerText: answerText || '',
+            updatedAt: new Date().toISOString()
+        };
+
+        if (isDatabaseConfigured()) {
+            try {
+                const db = await getDatabase();
+                if (db) {
+                    await db.collection('answers').updateOne(
+                        { studentId, examId, questionId },
+                        {
+                            $set: answerRecord,
+                            $setOnInsert: { createdAt: new Date().toISOString() }
+                        },
+                        { upsert: true }
+                    );
+                }
+            } catch (dbErr) {
+                console.error('[AOVS Database] Failed to persist written answer:', dbErr.message);
+                return res.status(500).json({ success: false, message: 'Database error saving answer.' });
+            }
+        } else {
+            // Mock memory persistence
+            if (!global.mockAnswers) global.mockAnswers = {};
+            global.mockAnswers[`${studentId}_${examId}_${questionId}`] = answerRecord;
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Answer saved successfully.'
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Internal server error while submitting answer.' });
+    }
+});
+
+// GET /api/exam/:examId/answers — Retrieve a student's saved written answers
+app.get('/api/exam/:examId/answers', async (req, res) => {
+    try {
+        const examId = req.params.examId;
+        const studentId = req.query.studentId;
+
+        if (!studentId) {
+            return res.status(400).json({ success: false, message: 'Student ID is required.' });
+        }
+
+        let answersList = [];
+
+        if (isDatabaseConfigured()) {
+            try {
+                const db = await getDatabase();
+                if (db) {
+                    answersList = await db.collection('answers').find({ examId, studentId }).toArray();
+                }
+            } catch (dbErr) {
+                console.error('[AOVS Database] Failed to retrieve written answers:', dbErr.message);
+                return res.status(500).json({ success: false, message: 'Database error retrieving answers.' });
+            }
+        } else {
+            if (global.mockAnswers) {
+                answersList = Object.values(global.mockAnswers).filter(a => a.examId === examId && a.studentId === studentId);
+            }
+        }
+
+        const answersMap = {};
+        answersList.forEach(ans => {
+            answersMap[ans.questionId] = ans.answerText;
+        });
+
+        res.status(200).json({ success: true, answers: answersMap });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Internal server error retrieving answers.' });
+    }
+});
+
 // ============================================================
 // STUDENT LOGIN ENDPOINT (Existing - preserved intact)
 // ============================================================

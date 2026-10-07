@@ -434,11 +434,13 @@ async function seedInitialExams(db) {
 
     const examsCollection = db.collection('exams');
     const questionsCollection = db.collection('questions');
+    const answersCollection = db.collection('answers');
 
     // Create unique indices for data integrity
     await examsCollection.createIndex({ id: 1 }, { unique: true });
     await questionsCollection.createIndex({ id: 1, examId: 1 }, { unique: true });
     await questionsCollection.createIndex({ examId: 1, questionNumber: 1 });
+    await answersCollection.createIndex({ studentId: 1, examId: 1, questionId: 1 }, { unique: true });
 
     const results = {
         examsUpserted: 0,

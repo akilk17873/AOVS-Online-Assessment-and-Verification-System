@@ -62,6 +62,7 @@
         writtenWordCount: document.getElementById('writtenWordCount'),
         writtenCharCount: document.getElementById('writtenCharCount'),
         saveStatusIndicator: document.getElementById('saveStatusIndicator'),
+        submitAnswerBtn: document.getElementById('submitAnswerBtn'),
         selectionNotice: document.getElementById('selectionNotice'),
         selectionNoticeText: document.getElementById('selectionNoticeText'),
 
@@ -207,6 +208,9 @@
                 return;
             }
 
+            // Fetch saved answers from DB before restoring session cache
+            await fetchSavedAnswers(examData.id);
+
             // Restore cached responses if session matches
             restoreCachedState();
 
@@ -243,6 +247,89 @@
         if (elements.academicTerm) elements.academicTerm.textContent = examData.academicTerm || 'Examination';
         if (elements.totalMarksBadge) elements.totalMarksBadge.textContent = `${examData.totalMarks || 0} Marks`;
         if (elements.paletteTotalSummary) elements.paletteTotalSummary.textContent = `${questions.length} Total Questions`;
+    }
+
+    /**
+     * Fetch previously saved written answers from MongoDB Atlas (SCRUM-10)
+     */
+    async function fetchSavedAnswers(examId) {
+        try {
+            const endpoint = `${getApiBaseUrl()}/api/exam/${encodeURIComponent(examId)}/answers?studentId=${encodeURIComponent(studentInfo.studentId)}`;
+            const response = await fetch(endpoint);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.answers) {
+                    // Merge saved DB answers into local state
+                    for (const [qId, text] of Object.entries(data.answers)) {
+                        answers[qId] = text;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Could not load saved answers from database', e);
+        }
+    }
+
+    /**
+     * Submit single written answer to MongoDB Atlas (SCRUM-10)
+     */
+    async function submitWrittenAnswer() {
+        const q = questions[currentIndex];
+        if (!q || !isWrittenQuestion(q)) return;
+
+        const answerText = elements.writtenAnswerInput ? elements.writtenAnswerInput.value || '' : '';
+        const examId = (examData && examData.id) ? examData.id : 'CS301-2026';
+        
+        const payload = {
+            studentId: studentInfo.studentId,
+            examId: examId,
+            questionId: q.id,
+            answerText: answerText
+        };
+
+        const btn = elements.submitAnswerBtn;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+        }
+
+        try {
+            const endpoint = `${getApiBaseUrl()}/api/exam/answers`;
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Failed to submit answer');
+            }
+
+            if (elements.saveStatusIndicator) {
+                elements.saveStatusIndicator.innerHTML = '<i class="fa-solid fa-check-double"></i> Answer saved to database!';
+                elements.saveStatusIndicator.style.color = 'var(--accent-emerald)';
+            }
+            
+            // Ensure local state is updated
+            answers[q.id] = answerText;
+            updatePaletteItemStates();
+            updateStatsCounters();
+            persistCurrentState();
+
+        } catch (error) {
+            console.error('Submit answer error:', error);
+            if (elements.saveStatusIndicator) {
+                elements.saveStatusIndicator.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Error saving answer';
+                elements.saveStatusIndicator.style.color = 'var(--accent-red)';
+            }
+            alert(error.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Submit Answer';
+            }
+        }
     }
 
     /**
@@ -390,6 +477,11 @@
             }
             updateWrittenCounts(savedText);
             updateSelectionNotice(q);
+            
+            if (elements.saveStatusIndicator) {
+                elements.saveStatusIndicator.innerHTML = '<i class="fa-solid fa-check"></i> Response preserved in session';
+                elements.saveStatusIndicator.style.color = '';
+            }
         } else {
             if (elements.writtenAnswerContainer) elements.writtenAnswerContainer.classList.add('hidden');
             if (elements.optionsContainer) elements.optionsContainer.classList.remove('hidden');
@@ -1061,6 +1153,9 @@
         if (elements.markReviewBtn) elements.markReviewBtn.addEventListener('click', toggleMarkForReview);
 
         // Written Answer Textarea Input (SCRUM-9)
+        if (elements.submitAnswerBtn) {
+            elements.submitAnswerBtn.addEventListener('click', submitWrittenAnswer);
+        }
         if (elements.writtenAnswerInput) {
             elements.writtenAnswerInput.addEventListener('input', (e) => {
                 const q = questions[currentIndex];
@@ -1075,6 +1170,11 @@
                 updatePaletteItemStates();
                 updateStatsCounters();
                 persistCurrentState();
+
+                if (elements.saveStatusIndicator) {
+                    elements.saveStatusIndicator.innerHTML = '<i class="fa-solid fa-pen"></i> Unsaved changes...';
+                    elements.saveStatusIndicator.style.color = 'var(--text-secondary)';
+                }
             });
         }
 
