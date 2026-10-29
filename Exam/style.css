@@ -493,6 +493,33 @@ html, body {
     color: var(--accent-purple);
 }
 
+/* SCRUM-11: Active Question Response Time Badge */
+.question-badge-time {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: var(--accent-amber);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all var(--transition-fast);
+}
+
+.question-badge-time i {
+    font-size: 10px;
+    animation: timeBlink 2s infinite ease-in-out;
+}
+
+@keyframes timeBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+
 .question-scoring-group {
     display: flex;
     align-items: center;
@@ -1629,6 +1656,8 @@ kbd {
 .summary-card.answered .sum-value { color: var(--color-answered); }
 .summary-card.unanswered .sum-value { color: var(--accent-rose); }
 .summary-card.marked .sum-value { color: var(--color-marked); }
+.summary-card.time-spent .sum-value { color: var(--accent-amber); }
+.summary-card.avg-time .sum-value { color: var(--accent-cyan); }
 
 .sum-value {
     font-size: 22px;

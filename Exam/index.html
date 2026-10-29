@@ -175,6 +175,10 @@
                                 <span class="question-badge-number" id="questionNumberBadge">Question 1 of 10</span>
                                 <span class="question-badge-section" id="questionSectionBadge">Section 1</span>
                                 <span class="question-badge-type" id="questionTypeBadge">Single Choice</span>
+                                <span class="question-badge-time" id="questionResponseTimeBadge" title="Active response time on this question (SCRUM-11)">
+                                    <i class="fa-regular fa-clock"></i>
+                                    <span id="questionActiveTimeText">00:00</span>
+                                </span>
                             </div>
 
                             <div class="question-scoring-group">
@@ -440,6 +444,14 @@
                         <span class="sum-value" id="modalMarkedQuestions">0</span>
                         <span class="sum-label">Marked for Review</span>
                     </div>
+                    <div class="summary-card time-spent">
+                        <span class="sum-value font-mono" id="modalTimeSpent">0m 00s</span>
+                        <span class="sum-label">Total Time Spent</span>
+                    </div>
+                    <div class="summary-card avg-time">
+                        <span class="sum-value font-mono" id="modalAvgTimePerQ">0s</span>
+                        <span class="sum-label">Avg / Question</span>
+                    </div>
                 </div>
 
                 <div class="unanswered-alert hidden" id="unansweredAlert">
@@ -483,6 +495,14 @@
                 <div class="receipt-row">
                     <span class="receipt-label">Answered Questions:</span>
                     <span class="receipt-val" id="receiptAnsweredQ">0</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Total Response Time:</span>
+                    <span class="receipt-val font-mono" id="receiptTotalTimeSpent">0m 00s</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Avg. Response Time / Q:</span>
+                    <span class="receipt-val font-mono" id="receiptAvgResponseTime">0s</span>
                 </div>
                 <div class="receipt-row">
                     <span class="receipt-label">Submission Timestamp:</span>

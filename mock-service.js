@@ -448,20 +448,12 @@ app.get('/api/exam/active', async (req, res) => {
                         exam: sanitizeExamForStudent(dbExam)
                     });
                 }
-                return res.status(404).json({
-                    success: false,
-                    message: `Examination '${targetId}' was not found in MongoDB.`
-                });
             } catch (dbError) {
-                console.error('[AOVS Database] Query error on /api/exam/active:', dbError.message);
-                return res.status(500).json({
-                    success: false,
-                    message: 'Database error retrieving active examination.'
-                });
+                console.warn('[AOVS Database] MongoDB query error on /api/exam/active, falling back to repository:', dbError.message);
             }
         }
 
-        // 2. Fallback to server-side repository when MONGODB_URI is not set
+        // 2. Fallback to server-side repository when MONGODB_URI is not set or DB is unavailable
         const activeExam = mockExams[targetId] || mockExams['CS301-2026'];
         if (!activeExam) {
             return res.status(404).json({
@@ -491,8 +483,7 @@ app.get('/api/exams', async (req, res) => {
                 const list = await getAllExamsFromDb();
                 return res.status(200).json({ success: true, source: 'mongodb', exams: list });
             } catch (dbErr) {
-                console.error('[AOVS Database] Error listing exams from DB:', dbErr.message);
-                return res.status(500).json({ success: false, message: 'Database error retrieving exams.' });
+                console.warn('[AOVS Database] MongoDB error listing exams, falling back to repository:', dbErr.message);
             }
         }
 
@@ -517,20 +508,15 @@ app.get('/api/exams/:id', async (req, res) => {
         if (isDatabaseConfigured()) {
             try {
                 const dbExam = await getExamFromDb(examId);
-                if (!dbExam) {
-                    return res.status(404).json({
-                        success: false,
-                        message: `Exam with ID '${examId}' was not found in MongoDB.`
+                if (dbExam) {
+                    return res.status(200).json({
+                        success: true,
+                        source: 'mongodb',
+                        exam: sanitizeExamForStudent(dbExam)
                     });
                 }
-                return res.status(200).json({
-                    success: true,
-                    source: 'mongodb',
-                    exam: sanitizeExamForStudent(dbExam)
-                });
             } catch (dbErr) {
-                console.error('[AOVS Database] Error getting exam from DB:', dbErr.message);
-                return res.status(500).json({ success: false, message: 'Database error retrieving exam.' });
+                console.warn('[AOVS Database] MongoDB error getting exam, falling back to repository:', dbErr.message);
             }
         }
 
@@ -551,10 +537,10 @@ app.get('/api/exams/:id', async (req, res) => {
     }
 });
 
-// POST /api/exams/:id/submit — Submit student responses
+// POST /api/exams/:id/submit — Submit student responses (SCRUM-11: Response Time Tracking)
 app.post('/api/exams/:id/submit', async (req, res) => {
     try {
-        const { studentId, answers, timeSpentSeconds } = req.body;
+        const { studentId, answers, timeSpentSeconds, responseTimes } = req.body;
         const examId = req.params.id;
 
         if (!studentId) {
@@ -566,12 +552,26 @@ app.post('/api/exams/:id/submit', async (req, res) => {
 
         const exam = (isDatabaseConfigured() ? await getExamFromDb(examId) : null) || mockExams[examId] || mockExams['CS301-2026'];
         const submissionId = `SUB-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
+
+        // SCRUM-11: Response time calculations & telemetry
+        const totalDuration = typeof timeSpentSeconds === 'number' ? timeSpentSeconds : 0;
+        const minutes = Math.floor(totalDuration / 60);
+        const seconds = totalDuration % 60;
+        const formattedTimeSpent = `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+        const qCount = (exam && exam.questions ? exam.questions.length : 0) || Object.keys(answers || {}).length || 1;
+        const avgResponseTimeSeconds = Math.round(totalDuration / qCount);
+
         const submissionRecord = {
             submissionId,
             examId,
             studentId,
             answers: answers || {},
-            timeSpentSeconds: timeSpentSeconds || 0,
+            timeSpentSeconds: totalDuration,
+            responseTimes: responseTimes || {
+                totalExamTimeSeconds: totalDuration,
+                averageTimePerQuestionSeconds: avgResponseTimeSeconds,
+                perQuestion: {}
+            },
             submittedAt: new Date().toISOString()
         };
 
@@ -595,6 +595,10 @@ app.post('/api/exams/:id/submit', async (req, res) => {
                 studentId,
                 questionsCount: exam && exam.questions ? exam.questions.length : 0,
                 answeredCount: Object.keys(answers || {}).length,
+                timeSpentSeconds: totalDuration,
+                formattedTimeSpent,
+                averageResponseTimeSeconds: avgResponseTimeSeconds,
+                responseTimes: submissionRecord.responseTimes,
                 submittedAt: new Date().toLocaleTimeString()
             }
         });
