@@ -13,9 +13,14 @@
     <div class="login-container">
         <!-- Left Side: Form -->
         <div class="login-left">
-            <div class="brand">
-                <i class="fa-solid fa-graduation-cap logo-icon"></i>
-                <span class="brand-text">AOVS</span>
+            <div class="brand-nav" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                <a href="/" class="brand" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px;" title="Return to Home Page">
+                    <i class="fa-solid fa-graduation-cap logo-icon"></i>
+                    <span class="brand-text">AOVS</span>
+                </a>
+                <a href="/" style="font-size: 12px; color: #a1a1aa; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" title="Return to Home Page">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Home
+                </a>
             </div>
             
             <h1 class="page-title">Student Login</h1>
@@ -46,10 +51,34 @@
                     </label>
                 </div>
                 
-                <button type="submit" class="login-button">Login</button>
+                <button type="submit" class="login-button" id="submitLoginBtn">Login</button>
+                
+                <!-- Quick Demo Credentials Fill -->
+                <div class="demo-credentials-box" style="margin-top: 14px; padding: 10px 12px; background: rgba(237, 255, 102, 0.08); border: 1px dashed rgba(237, 255, 102, 0.4); border-radius: 8px; font-size: 12px; color: #dfdff2; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <div>
+                        <strong style="color: #edff66;"><i class="fa-solid fa-bolt"></i> Demo:</strong>
+                        <span style="font-family: monospace; color: #a1a1aa; margin-left: 3px;">TEST001 / Test@123</span>
+                    </div>
+                    <button type="button" id="fillDemoBtn" style="background: #edff66; color: #000; border: none; border-radius: 4px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: opacity 0.2s;" title="Fill credentials and sign in">
+                        Auto-Fill
+                    </button>
+                </div>
             </form>
             
             <div id="successMessage" class="success-message"></div>
+            
+            <!-- Redirection Indicator & Manual Link -->
+            <div id="redirectBanner" style="display: none; margin-top: 10px; padding: 10px 14px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; text-align: center; font-size: 13px; color: #6ee7b7;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600;">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    <span>Redirecting to Examination Portal...</span>
+                </div>
+                <div style="margin-top: 6px;">
+                    <a id="directExamLink" href="../../Exam/index.html" style="color: #edff66; text-decoration: underline; font-size: 12px; font-weight: 500;">
+                        Click here if not redirected automatically &rarr;
+                    </a>
+                </div>
+            </div>
             
             <div class="form-footer">
                 <p>Don't have an account? <a href="#">Sign up</a></p>

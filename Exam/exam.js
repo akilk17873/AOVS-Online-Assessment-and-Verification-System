@@ -1180,6 +1180,30 @@
      * Bind Event Listeners
      */
     function bindEvents() {
+        // Logout Button
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                if (confirm('Are you sure you want to sign out and return to the login portal?')) {
+                    sessionStorage.removeItem('aovs_student');
+                    const loginUrl = window.location.protocol === 'file:'
+                        ? '../Student%20Login/Creating%20Login_UI/index.html'
+                        : '/Student%20Login/Creating%20Login_UI/index.html';
+                    window.location.href = loginUrl;
+                }
+            });
+        }
+
+        // Adjust Home link when running directly from filesystem (file:///)
+        const examHomeLink = document.getElementById('examHomeLink');
+        if (examHomeLink && window.location.protocol === 'file:') {
+            examHomeLink.href = '../index.html';
+        }
+        const receiptHomeBtn = document.getElementById('receiptHomeBtn');
+        if (receiptHomeBtn && window.location.protocol === 'file:') {
+            receiptHomeBtn.href = '../index.html';
+        }
+
         // Navigation Buttons
         if (elements.prevBtn) elements.prevBtn.addEventListener('click', goToPrevQuestion);
         if (elements.nextBtn) elements.nextBtn.addEventListener('click', goToNextQuestion);

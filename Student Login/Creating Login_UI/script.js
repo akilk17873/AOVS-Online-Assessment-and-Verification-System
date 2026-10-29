@@ -30,13 +30,38 @@ document.getElementById('loginForm').addEventListener('submit', function(event) 
         isValid = false;
     }
 
-    // If validation passes, simulate a successful UI state without actual authentication
+    const redirectBanner = document.getElementById('redirectBanner');
+    const directExamLink = document.getElementById('directExamLink');
+
+    if (redirectBanner) {
+        redirectBanner.style.display = 'none';
+    }
+
+    function getApiBaseUrl() {
+        if (window.location.protocol === 'file:') {
+            return 'http://localhost:3000';
+        }
+        // In browser HTTP environment, use relative URL to match whatever port served this page
+        return '';
+    }
+
+    // Determine reliable exam page target
+    function getExamRedirectUrl() {
+        const isFile = window.location.protocol === 'file:';
+        const decodedPath = decodeURIComponent(window.location.pathname);
+        if (isFile || decodedPath.includes('Student Login') || decodedPath.includes('Student%20Login')) {
+            return '../../Exam/index.html';
+        }
+        return '/Exam/index.html';
+    }
+
+    // If validation passes, authenticate and transition to exam
     if (isValid) {
         successMessage.textContent = 'Authenticating...';
         successMessage.style.display = 'block';
-        successMessage.style.color = '#10b981'; // default success color or neutral
+        successMessage.style.color = '#10b981';
 
-        fetch('http://localhost:3000/api/college/login', {
+        fetch(`${getApiBaseUrl()}/api/college/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -46,11 +71,35 @@ document.getElementById('loginForm').addEventListener('submit', function(event) 
         .then(response => response.json().then(data => ({ status: response.status, data })))
         .then(({ status, data }) => {
             if (status === 200) {
+                // Keep exact message text for test assertions
                 successMessage.textContent = data.message || 'Authentication successful';
-                successMessage.style.color = '#10b981'; // Success color
+                successMessage.style.color = '#10b981';
+
+                // Save student session for Exam Portal integration
+                const student = data.student || { studentId: studentId, name: 'Akil Kumar' };
+                try {
+                    sessionStorage.setItem('aovs_student', JSON.stringify({
+                        studentId: student.studentId || studentId,
+                        name: student.name || 'Akil Kumar',
+                        loggedInAt: new Date().toISOString()
+                    }));
+                } catch (e) {}
+
+                const targetExam = getExamRedirectUrl();
+                if (redirectBanner) {
+                    redirectBanner.style.display = 'block';
+                }
+                if (directExamLink) {
+                    directExamLink.href = targetExam;
+                }
+
+                // Seamlessly transition to the Examination interface
+                setTimeout(() => {
+                    window.location.href = targetExam;
+                }, 600);
             } else if (status === 401) {
                 successMessage.textContent = 'Invalid student ID or password';
-                successMessage.style.color = '#ef4444'; // Error color
+                successMessage.style.color = '#ef4444';
             } else if (status === 400) {
                 successMessage.textContent = data.message || 'Missing/invalid credentials';
                 successMessage.style.color = '#ef4444';
@@ -66,3 +115,21 @@ document.getElementById('loginForm').addEventListener('submit', function(event) 
         });
     }
 });
+
+// Quick Demo autofill helper
+const fillDemoBtn = document.getElementById('fillDemoBtn');
+if (fillDemoBtn) {
+    fillDemoBtn.addEventListener('click', function() {
+        const studentIdInput = document.getElementById('studentId');
+        const passwordInput = document.getElementById('password');
+        if (studentIdInput && passwordInput) {
+            studentIdInput.value = 'TEST001';
+            passwordInput.value = 'Test@123';
+            // Auto submit
+            const form = document.getElementById('loginForm');
+            if (form) {
+                form.dispatchEvent(new Event('submit', { cancelable: true }));
+            }
+        }
+    });
+}

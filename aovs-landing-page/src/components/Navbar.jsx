@@ -93,6 +93,13 @@ const NavBar = () => {
               rightIcon={<TiLocationArrow />}
               containerClass="bg-[#edff66] md:flex hidden items-center justify-center gap-1 font-semibold text-black hover:bg-yellow-300"
             />
+            <Button
+              id="exam-portal-nav"
+              title="Exam Portal"
+              href="/Exam/index.html"
+              rightIcon={<TiLocationArrow />}
+              containerClass="bg-white/15 md:flex hidden items-center justify-center gap-1 font-medium text-[#dfdff2] hover:bg-white/25 border border-white/20"
+            />
           </div>
 
           {/* Navigation Links and Audio Button */}
