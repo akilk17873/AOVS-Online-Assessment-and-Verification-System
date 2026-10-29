@@ -397,11 +397,12 @@ function sanitizeExamForStudent(exam) {
     };
 }
 
-// Convenient redirects for student routing
-app.get('/exam', (req, res) => {
-    res.redirect('/Exam/index.html');
+// Convenient redirects for unified platform routing
+app.get(['/exam', '/assessment', '/assessments'], (req, res) => {
+    const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    res.redirect(`/Exam/index.html${qs}`);
 });
-app.get('/login', (req, res) => {
+app.get(['/login', '/portal', '/student-login'], (req, res) => {
     res.redirect('/Student%20Login/Creating%20Login_UI/index.html');
 });
 
@@ -732,7 +733,8 @@ app.post('/api/college/login', (req, res) => {
                 success: true,
                 message: "Authentication successful",
                 student: {
-                    studentId: TEST_STUDENT_ID
+                    studentId: TEST_STUDENT_ID,
+                    name: "Akil Kumar"
                 }
             });
         } else {

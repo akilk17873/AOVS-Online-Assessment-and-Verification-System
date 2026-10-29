@@ -88,6 +88,13 @@ const Hero = () => {
                 containerClass="bg-yellow-300 flex-center gap-1 font-bold text-black hover:bg-yellow-400"
               />
               <Button
+                id="hero-exam-portal"
+                title="Live Assessment"
+                href="/Exam/index.html"
+                leftIcon={<TiLocationArrow />}
+                containerClass="bg-white/20 text-white backdrop-blur border border-white/30 flex-center gap-1 hover:bg-white/30 font-semibold"
+              />
+              <Button
                 id="explore-btn"
                 title="Explore Platform"
                 href="#features"
