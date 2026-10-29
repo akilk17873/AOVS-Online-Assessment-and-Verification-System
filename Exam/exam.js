@@ -23,6 +23,10 @@
         name: 'Akil Kumar'
     };
 
+    // SCRUM-11: Response Time Tracking State
+    let questionResponseTimes = {}; // { [qId]: { timeSpentSeconds: 0, firstResponseSeconds: null, visitCount: 0, answered: false } }
+    let activeQuestionStartTime = null;
+
     // DOM Elements Cache
     const elements = {
         // States
@@ -47,6 +51,8 @@
         questionNumberBadge: document.getElementById('questionNumberBadge'),
         questionSectionBadge: document.getElementById('questionSectionBadge'),
         questionTypeBadge: document.getElementById('questionTypeBadge'),
+        questionResponseTimeBadge: document.getElementById('questionResponseTimeBadge'),
+        questionActiveTimeText: document.getElementById('questionActiveTimeText'),
         questionMarksValue: document.getElementById('questionMarksValue'),
         questionNegativeMarksPill: document.getElementById('questionNegativeMarksPill'),
         questionNegativeValue: document.getElementById('questionNegativeValue'),
@@ -109,6 +115,8 @@
         modalAnsweredQuestions: document.getElementById('modalAnsweredQuestions'),
         modalUnansweredQuestions: document.getElementById('modalUnansweredQuestions'),
         modalMarkedQuestions: document.getElementById('modalMarkedQuestions'),
+        modalTimeSpent: document.getElementById('modalTimeSpent'),
+        modalAvgTimePerQ: document.getElementById('modalAvgTimePerQ'),
         unansweredAlert: document.getElementById('unansweredAlert'),
 
         receiptModal: document.getElementById('receiptModal'),
@@ -116,6 +124,8 @@
         receiptStudentId: document.getElementById('receiptStudentId'),
         receiptTotalQ: document.getElementById('receiptTotalQ'),
         receiptAnsweredQ: document.getElementById('receiptAnsweredQ'),
+        receiptTotalTimeSpent: document.getElementById('receiptTotalTimeSpent'),
+        receiptAvgResponseTime: document.getElementById('receiptAvgResponseTime'),
         receiptTimestamp: document.getElementById('receiptTimestamp'),
 
         retryLoadBtn: document.getElementById('retryLoadBtn'),
@@ -229,6 +239,7 @@
             renderInstructions();
             renderQuestionPalette();
             renderCurrentQuestion();
+            initActiveQuestionTimer();
             startCountdownTimer();
 
             showWorkspaceState();
@@ -378,10 +389,82 @@
             const text = elements.writtenAnswerInput.value;
             if (text && text.trim().length > 0) {
                 answers[q.id] = text;
+                recordResponseInteraction(q.id);
             } else {
                 delete answers[q.id];
             }
         }
+    }
+
+    /**
+     * SCRUM-11: Question Response Time Tracking Engine
+     */
+    function getActiveQuestionElapsedSeconds() {
+        if (!activeQuestionStartTime) return 0;
+        return Math.max(0, Math.floor((Date.now() - activeQuestionStartTime) / 1000));
+    }
+
+    function initQuestionResponseTime(qId) {
+        if (!qId) return;
+        if (!questionResponseTimes[qId]) {
+            questionResponseTimes[qId] = {
+                timeSpentSeconds: 0,
+                firstResponseSeconds: null,
+                visitCount: 0,
+                answered: false
+            };
+        }
+    }
+
+    function initActiveQuestionTimer() {
+        if (questions.length === 0 || currentIndex < 0 || currentIndex >= questions.length) return;
+        const q = questions[currentIndex];
+        if (!q || !q.id) return;
+
+        initQuestionResponseTime(q.id);
+        questionResponseTimes[q.id].visitCount += 1;
+        activeQuestionStartTime = Date.now();
+        updateActiveQuestionTimeBadge();
+    }
+
+    function flushActiveQuestionTime() {
+        if (!activeQuestionStartTime) return;
+        const q = questions[currentIndex];
+        if (q && q.id) {
+            initQuestionResponseTime(q.id);
+            const elapsed = getActiveQuestionElapsedSeconds();
+            questionResponseTimes[q.id].timeSpentSeconds += elapsed;
+            if (isQuestionAnswered(q.id)) {
+                questionResponseTimes[q.id].answered = true;
+            }
+        }
+        activeQuestionStartTime = Date.now();
+        persistCurrentState();
+    }
+
+    function recordResponseInteraction(qId) {
+        if (!qId) return;
+        initQuestionResponseTime(qId);
+        questionResponseTimes[qId].answered = true;
+        if (questionResponseTimes[qId].firstResponseSeconds === null) {
+            const examElapsed = Math.max(0, totalExamDurationSeconds - timeRemainingSeconds);
+            questionResponseTimes[qId].firstResponseSeconds = examElapsed;
+        }
+        persistCurrentState();
+    }
+
+    function updateActiveQuestionTimeBadge() {
+        if (!elements.questionActiveTimeText) return;
+        const q = questions[currentIndex];
+        if (!q || !q.id) return;
+
+        const baseTime = (questionResponseTimes[q.id] && questionResponseTimes[q.id].timeSpentSeconds) || 0;
+        const currentSession = getActiveQuestionElapsedSeconds();
+        const totalQSeconds = baseTime + currentSession;
+
+        const mins = Math.floor(totalQSeconds / 60);
+        const secs = totalQSeconds % 60;
+        elements.questionActiveTimeText.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     }
 
     /**
@@ -398,6 +481,9 @@
             q.id = 'q_' + (currentIndex + 1);
         }
         visited[q.id] = true;
+
+        // SCRUM-11: Update active question response time badge
+        updateActiveQuestionTimeBadge();
 
         // 1. Question Number & Progress
         if (elements.questionNumberBadge) {
@@ -599,12 +685,14 @@
 
             if (current.length > 0) {
                 answers[question.id] = current;
+                recordResponseInteraction(question.id);
             } else {
                 delete answers[question.id];
             }
         } else {
             // Single choice (radio): selecting sets answer
             answers[question.id] = optionId;
+            recordResponseInteraction(question.id);
         }
 
         // Re-render options to update classes and aria attributes
@@ -719,8 +807,10 @@
     function goToQuestion(index) {
         if (index < 0 || index >= questions.length) return;
         saveActiveWrittenAnswer();
+        flushActiveQuestionTime();
         currentIndex = index;
         renderCurrentQuestion();
+        initActiveQuestionTimer();
 
         // Close mobile drawer if open
         closeMobileDrawer();
@@ -885,6 +975,7 @@
         timerInterval = setInterval(() => {
             timeRemainingSeconds--;
             updateTimerDisplay();
+            updateActiveQuestionTimeBadge();
 
             if (timeRemainingSeconds <= 0) {
                 clearInterval(timerInterval);
@@ -923,6 +1014,7 @@
      */
     function openSubmitModal() {
         saveActiveWrittenAnswer();
+        flushActiveQuestionTime();
         let answered = 0;
         let unanswered = 0;
         let marked = 0;
@@ -938,6 +1030,14 @@
         if (elements.modalAnsweredQuestions) elements.modalAnsweredQuestions.textContent = answered;
         if (elements.modalUnansweredQuestions) elements.modalUnansweredQuestions.textContent = unanswered;
         if (elements.modalMarkedQuestions) elements.modalMarkedQuestions.textContent = marked;
+
+        // SCRUM-11: Response time summary in confirmation modal
+        const timeSpent = Math.max(0, totalExamDurationSeconds - timeRemainingSeconds);
+        const mins = Math.floor(timeSpent / 60);
+        const secs = timeSpent % 60;
+        const avgSecs = questions.length > 0 ? Math.round(timeSpent / questions.length) : 0;
+        if (elements.modalTimeSpent) elements.modalTimeSpent.textContent = `${mins}m ${String(secs).padStart(2, '0')}s`;
+        if (elements.modalAvgTimePerQ) elements.modalAvgTimePerQ.textContent = `${avgSecs}s`;
 
         if (elements.unansweredAlert) {
             if (unanswered > 0) {
@@ -960,14 +1060,21 @@
 
     async function submitExamResponses() {
         saveActiveWrittenAnswer();
+        flushActiveQuestionTime();
         closeSubmitModal();
         showLoadingState();
 
         const timeSpent = Math.max(0, totalExamDurationSeconds - timeRemainingSeconds);
+        const avgTime = questions.length > 0 ? Math.round(timeSpent / questions.length) : 0;
         const payload = {
             studentId: studentInfo.studentId,
             answers: answers,
-            timeSpentSeconds: timeSpent
+            timeSpentSeconds: timeSpent,
+            responseTimes: {
+                totalExamTimeSeconds: timeSpent,
+                averageTimePerQuestionSeconds: avgTime,
+                perQuestion: questionResponseTimes
+            }
         };
 
         const examId = (examData && examData.id) ? examData.id : 'CS301-2026';
@@ -997,6 +1104,10 @@
                 studentId: studentInfo.studentId,
                 questionsCount: questions.length,
                 answeredCount: Object.keys(answers).length,
+                timeSpentSeconds: timeSpent,
+                formattedTimeSpent: `${Math.floor(timeSpent / 60)}m ${String(timeSpent % 60).padStart(2, '0')}s`,
+                averageResponseTimeSeconds: avgTime,
+                responseTimes: payload.responseTimes,
                 submittedAt: new Date().toLocaleTimeString()
             });
         } catch (error) {
@@ -1011,7 +1122,18 @@
         if (elements.receiptStudentId) elements.receiptStudentId.textContent = receipt.studentId;
         if (elements.receiptTotalQ) elements.receiptTotalQ.textContent = receipt.questionsCount || questions.length;
         if (elements.receiptAnsweredQ) elements.receiptAnsweredQ.textContent = receipt.answeredCount || Object.keys(answers).length;
-        if (elements.receiptTimestamp) elements.receiptTimestamp.textContent = new Date().toLocaleTimeString();
+        if (elements.receiptTimestamp) elements.receiptTimestamp.textContent = receipt.submittedAt || new Date().toLocaleTimeString();
+
+        // SCRUM-11: Display response time breakdown in receipt
+        if (elements.receiptTotalTimeSpent) {
+            const timeSpent = receipt.timeSpentSeconds !== undefined ? receipt.timeSpentSeconds : Math.max(0, totalExamDurationSeconds - timeRemainingSeconds);
+            const formatted = receipt.formattedTimeSpent || `${Math.floor(timeSpent / 60)}m ${String(timeSpent % 60).padStart(2, '0')}s`;
+            elements.receiptTotalTimeSpent.textContent = formatted;
+        }
+        if (elements.receiptAvgResponseTime) {
+            const avgSecs = receipt.averageResponseTimeSeconds !== undefined ? receipt.averageResponseTimeSeconds : (questions.length > 0 ? Math.round((receipt.timeSpentSeconds || 0) / questions.length) : 0);
+            elements.receiptAvgResponseTime.textContent = `${avgSecs}s`;
+        }
 
         if (elements.receiptModal) {
             elements.receiptModal.classList.remove('hidden');
@@ -1029,7 +1151,8 @@
                 answers,
                 markedForReview,
                 visited,
-                timeRemainingSeconds
+                timeRemainingSeconds,
+                questionResponseTimes
             };
             sessionStorage.setItem(cacheKey, JSON.stringify(state));
         } catch (e) {
@@ -1051,6 +1174,9 @@
                 }
                 if (typeof parsed.timeRemainingSeconds === 'number' && parsed.timeRemainingSeconds > 0) {
                     timeRemainingSeconds = parsed.timeRemainingSeconds;
+                }
+                if (parsed.questionResponseTimes && typeof parsed.questionResponseTimes === 'object') {
+                    questionResponseTimes = parsed.questionResponseTimes;
                 }
             }
         } catch (e) {
@@ -1163,6 +1289,7 @@
                 const text = e.target.value;
                 if (text && text.trim().length > 0) {
                     answers[q.id] = text;
+                    recordResponseInteraction(q.id);
                 } else {
                     delete answers[q.id];
                 }

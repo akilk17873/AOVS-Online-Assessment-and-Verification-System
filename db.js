@@ -12,6 +12,9 @@ const { MongoClient } = require('mongodb');
 // Cached singleton connection
 let cachedClient = null;
 let cachedDb = null;
+let dbConnectionFailed = false;
+let lastConnectionAttempt = 0;
+const RETRY_COOLDOWN_MS = 30000;
 
 /**
  * Mask sensitive credentials in MongoDB connection string for safe diagnostics
@@ -44,21 +47,30 @@ async function getMongoClient(customUri = null) {
         return cachedClient;
     }
 
+    // Prevent blocking incoming requests if recent connection attempt failed
+    if (dbConnectionFailed && (Date.now() - lastConnectionAttempt < RETRY_COOLDOWN_MS)) {
+        return null;
+    }
+
+    lastConnectionAttempt = Date.now();
+
     try {
         const client = new MongoClient(uri, {
-            serverSelectionTimeoutMS: 5000,
-            connectTimeoutMS: 5000,
+            serverSelectionTimeoutMS: 2000,
+            connectTimeoutMS: 2000,
             maxPoolSize: 10
         });
 
         await client.connect();
         cachedClient = client;
+        dbConnectionFailed = false;
         const dbName = process.env.MONGODB_DB_NAME || 'aovs';
         cachedDb = client.db(dbName);
 
         console.log(`[AOVS Database] Connected to MongoDB Atlas (DB: ${dbName})`);
         return cachedClient;
     } catch (error) {
+        dbConnectionFailed = true;
         console.error('[AOVS Database] Connection error:', error.message);
         throw error;
     }
