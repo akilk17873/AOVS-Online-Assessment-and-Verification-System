@@ -9,6 +9,10 @@ app.use(cors());
 const PORT = process.env.MOCK_COLLEGE_PORT || 3000;
 const TEST_STUDENT_ID = process.env.TEST_STUDENT_ID || 'TEST001';
 const TEST_PASSWORD = process.env.TEST_PASSWORD || 'Test@123';
+const TEST_INSTRUCTOR_ID = process.env.TEST_INSTRUCTOR_ID || 'INST001';
+const TEST_INSTRUCTOR_PASSWORD = process.env.TEST_INSTRUCTOR_PASSWORD || 'Instructor@123';
+const TEST_ADMIN_ID = process.env.TEST_ADMIN_ID || 'admin';
+const TEST_ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || 'Admin@123';
 
 const path = require('path');
 
@@ -397,6 +401,82 @@ function sanitizeExamForStudent(exam) {
     };
 }
 
+// ============================================================
+// IN-MEMORY SUBMISSIONS REPOSITORY (SCRUM-8: Review Dashboard)
+// Supports fallback & fast retrieval with response telemetry
+// ============================================================
+const inMemorySubmissions = [
+    {
+        submissionId: 'SUB-CS301-101',
+        examId: 'CS301-2026',
+        examTitle: 'Data Structures & Algorithms Certification Examination',
+        studentId: 'TEST001',
+        studentName: 'Akil Kumar',
+        department: 'School of Computing & Information Technology',
+        answers: {
+            'CS301-Q1': 'A Hash Table achieves expected O(1) time complexity for insertions and lookups because a deterministic hash function maps keys directly into array bucket indices. In contrast, an Array requires O(n) sequential scan for unsorted elements or O(log n) when maintained sorted. Hash collisions are handled via chaining or open addressing.',
+            'CS301-Q2': 'An adjacency list is far more space-efficient for sparse graphs: its memory footprint is O(V + E) versus O(V^2) for an adjacency matrix. It also facilitates faster vertex neighbor iterations proportional to vertex degree.',
+            'CS301-Q3': 'QuickSort suffers O(n^2) worst-case time complexity when the chosen pivot is continually the minimum or maximum element, yielding asymmetric subproblems of sizes 0 and n - 1. Mitigation strategies include median-of-three pivot selection, randomized pivots, or introsort.',
+            'CS301-Q4': 'A Red-Black Tree enforces maximum tree height of 2 * log2(n + 1) using color rules and rotations, avoiding the degradation of unbalanced BSTs into linked lists.',
+            'CS301-Q5': 'Dynamic programming relies on optimal substructure and overlapping subproblems to cache solutions and avoid combinatorial explosion.'
+        },
+        timeSpentSeconds: 940,
+        formattedTimeSpent: '15m 40s',
+        responseTimes: {
+            totalExamTimeSeconds: 940,
+            averageTimePerQuestionSeconds: 188,
+            perQuestion: {
+                'q-1': { questionId: 'q-1', questionNumber: 1, totalTimeSeconds: 175, formattedTime: '02m 55s', interactions: 8 },
+                'CS301-Q1': { questionId: 'CS301-Q1', questionNumber: 1, totalTimeSeconds: 175, formattedTime: '02m 55s', interactions: 8 },
+                'CS301-Q2': { questionId: 'CS301-Q2', questionNumber: 2, totalTimeSeconds: 190, formattedTime: '03m 10s', interactions: 6 },
+                'CS301-Q3': { questionId: 'CS301-Q3', questionNumber: 3, totalTimeSeconds: 215, formattedTime: '03m 35s', interactions: 10 },
+                'CS301-Q4': { questionId: 'CS301-Q4', questionNumber: 4, totalTimeSeconds: 180, formattedTime: '03m 00s', interactions: 7 },
+                'CS301-Q5': { questionId: 'CS301-Q5', questionNumber: 5, totalTimeSeconds: 180, formattedTime: '03m 00s', interactions: 5 }
+            }
+        },
+        status: 'Pending Review',
+        marks: {},
+        totalScore: null,
+        maxScore: 25,
+        instructorFeedback: '',
+        submittedAt: new Date(Date.now() - 3600000).toISOString()
+    },
+    {
+        submissionId: 'SUB-CS301-102',
+        examId: 'CS301-2026',
+        examTitle: 'Data Structures & Algorithms Certification Examination',
+        studentId: 'STU102',
+        studentName: 'Priya Sharma',
+        department: 'School of Computing & Information Technology',
+        answers: {
+            'CS301-Q1': 'Hash tables compute direct index locations with hashing algorithms, enabling O(1) operations. Array searches require O(n) iteration across all indexes.',
+            'CS301-Q2': 'Adjacency matrices allocate V x V memory regardless of actual connections, while adjacency lists store only existent edges, optimizing memory for sparse graphs.',
+            'CS301-Q3': 'QuickSort worst-case O(n^2) occurs on pre-sorted arrays without randomized pivoting.',
+            'CS301-Q4': 'Self-balancing trees prevent deep tree chains, keeping search paths logarithmic.',
+            'CS301-Q5': 'Memoization preserves computed overlapping sub-results to avoid recomputation.'
+        },
+        timeSpentSeconds: 1120,
+        formattedTimeSpent: '18m 40s',
+        responseTimes: {
+            totalExamTimeSeconds: 1120,
+            averageTimePerQuestionSeconds: 224,
+            perQuestion: {
+                'CS301-Q1': { questionId: 'CS301-Q1', questionNumber: 1, totalTimeSeconds: 210, formattedTime: '03m 30s', interactions: 5 },
+                'CS301-Q2': { questionId: 'CS301-Q2', questionNumber: 2, totalTimeSeconds: 240, formattedTime: '04m 00s', interactions: 7 },
+                'CS301-Q3': { questionId: 'CS301-Q3', questionNumber: 3, totalTimeSeconds: 230, formattedTime: '03m 50s', interactions: 8 },
+                'CS301-Q4': { questionId: 'CS301-Q4', questionNumber: 4, totalTimeSeconds: 220, formattedTime: '03m 40s', interactions: 6 },
+                'CS301-Q5': { questionId: 'CS301-Q5', questionNumber: 5, totalTimeSeconds: 220, formattedTime: '03m 40s', interactions: 4 }
+            }
+        },
+        status: 'Reviewed',
+        marks: { 'CS301-Q1': 5, 'CS301-Q2': 5, 'CS301-Q3': 4, 'CS301-Q4': 5, 'CS301-Q5': 4 },
+        totalScore: 23,
+        maxScore: 25,
+        instructorFeedback: 'Outstanding analytical explanations and thorough complexity justifications.',
+        submittedAt: new Date(Date.now() - 7200000).toISOString()
+    }
+];
+
 // Convenient redirects for unified platform routing
 app.get(['/exam', '/assessment', '/assessments'], (req, res) => {
     const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
@@ -404,6 +484,12 @@ app.get(['/exam', '/assessment', '/assessments'], (req, res) => {
 });
 app.get(['/login', '/portal', '/student-login'], (req, res) => {
     res.redirect('/Student%20Login/Creating%20Login_UI/index.html');
+});
+app.get(['/instructor', '/instructor/login', '/admin', '/admin/login'], (req, res) => {
+    res.redirect('/Instructor/login.html');
+});
+app.get(['/instructor/dashboard', '/dashboard', '/review-dashboard', '/admin/dashboard'], (req, res) => {
+    res.redirect('/Instructor/dashboard.html');
 });
 
 // ============================================================
@@ -576,6 +662,18 @@ app.post('/api/exams/:id/submit', async (req, res) => {
             submittedAt: new Date().toISOString()
         };
 
+        // Save to in-memory store for instant review dashboard visibility
+        inMemorySubmissions.unshift({
+            ...submissionRecord,
+            studentName: studentId === TEST_STUDENT_ID ? 'Akil Kumar' : `Student ${studentId}`,
+            status: 'Pending Review',
+            examTitle: exam ? exam.title : 'Examination',
+            maxScore: exam && exam.totalMarks ? exam.totalMarks : 25,
+            totalScore: null,
+            marks: {},
+            instructorFeedback: ''
+        });
+
         if (isDatabaseConfigured()) {
             try {
                 const db = await getDatabase();
@@ -728,6 +826,15 @@ app.post('/api/college/login', (req, res) => {
             });
         }
 
+        // Role Separation Check (SCRUM-8): Reject instructor/admin credentials on student portal
+        if ((studentId === TEST_INSTRUCTOR_ID && password === TEST_INSTRUCTOR_PASSWORD) ||
+            (studentId === TEST_ADMIN_ID && password === TEST_ADMIN_PASSWORD)) {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied: Instructor credentials cannot access student portal. Please sign in via the Instructor Portal."
+            });
+        }
+
         if (studentId === TEST_STUDENT_ID && password === TEST_PASSWORD) {
             return res.status(200).json({
                 success: true,
@@ -747,6 +854,346 @@ app.post('/api/college/login', (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Internal server error"
+        });
+    }
+});
+
+// ============================================================
+// INSTRUCTOR & ADMIN AUTHENTICATION (SCRUM-8)
+// Dedicated role-based authentication endpoint
+// ============================================================
+app.post(['/api/instructor/login', '/api/admin/login'], (req, res) => {
+    try {
+        const id = (req.body.instructorId || req.body.username || req.body.email || req.body.id || '').trim();
+        const password = req.body.password || '';
+
+        if (!id || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing instructor ID or password"
+            });
+        }
+
+        // Role-Based Separation: Student credentials cannot log into instructor portal
+        if (id === TEST_STUDENT_ID && password === TEST_PASSWORD) {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied: Student credentials cannot access instructor review portal"
+            });
+        }
+
+        // Validate Instructor credentials
+        if (id === TEST_INSTRUCTOR_ID && password === TEST_INSTRUCTOR_PASSWORD) {
+            return res.status(200).json({
+                success: true,
+                message: "Instructor authentication successful",
+                role: "instructor",
+                token: `inst-session-${Date.now()}`,
+                user: {
+                    id: TEST_INSTRUCTOR_ID,
+                    name: "Prof. Darshan K",
+                    email: "darshan.k@aovs.edu",
+                    role: "instructor",
+                    department: "School of Computing & Information Technology",
+                    title: "Lead Assessment Evaluator",
+                    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80"
+                }
+            });
+        }
+
+        // Validate Administrator credentials
+        if (id.toLowerCase() === TEST_ADMIN_ID.toLowerCase() && password === TEST_ADMIN_PASSWORD) {
+            return res.status(200).json({
+                success: true,
+                message: "Administrator authentication successful",
+                role: "admin",
+                token: `admin-session-${Date.now()}`,
+                user: {
+                    id: TEST_ADMIN_ID,
+                    name: "System Administrator",
+                    email: "admin@aovs.edu",
+                    role: "admin",
+                    department: "Academic Affairs & Examination Board",
+                    title: "System Administrator",
+                    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80"
+                }
+            });
+        }
+
+        return res.status(401).json({
+            success: false,
+            message: "Invalid instructor ID or password"
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error during instructor authentication"
+        });
+    }
+});
+
+// ============================================================
+// INSTRUCTOR REVIEW DASHBOARD APIS (SCRUM-8)
+// Endpoints for retrieving submissions, grading, telemetry metrics
+// ============================================================
+
+// GET /api/instructor/submissions — List all student submissions with telemetry summaries
+app.get('/api/instructor/submissions', async (req, res) => {
+    try {
+        let submissions = [...inMemorySubmissions];
+
+        if (isDatabaseConfigured()) {
+            try {
+                const db = await getDatabase();
+                if (db) {
+                    const dbSubmissions = await db.collection('submissions').find({}).sort({ submittedAt: -1 }).toArray();
+                    if (dbSubmissions && dbSubmissions.length > 0) {
+                        // Merge with in-memory store, avoiding duplicates by submissionId
+                        const existingIds = new Set(submissions.map(s => s.submissionId));
+                        dbSubmissions.forEach(sub => {
+                            if (!existingIds.has(sub.submissionId)) {
+                                submissions.push({
+                                    ...sub,
+                                    studentName: sub.studentName || (sub.studentId === TEST_STUDENT_ID ? 'Akil Kumar' : `Student ${sub.studentId}`),
+                                    status: sub.status || 'Pending Review',
+                                    maxScore: sub.maxScore || 25
+                                });
+                            }
+                        });
+                    }
+                }
+            } catch (dbErr) {
+                console.warn('[AOVS Database] MongoDB read error in instructor submissions:', dbErr.message);
+            }
+        }
+
+        const formatted = submissions.map(sub => {
+            const timeSec = sub.timeSpentSeconds || 0;
+            const minutes = Math.floor(timeSec / 60);
+            const seconds = timeSec % 60;
+            const formattedTime = `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+
+            const answeredCount = Object.keys(sub.answers || {}).length;
+            const avgRespSec = (sub.responseTimes && sub.responseTimes.averageTimePerQuestionSeconds)
+                ? sub.responseTimes.averageTimePerQuestionSeconds
+                : (answeredCount > 0 ? Math.round(timeSec / answeredCount) : 0);
+
+            return {
+                submissionId: sub.submissionId,
+                examId: sub.examId || 'CS301-2026',
+                examTitle: sub.examTitle || 'Data Structures & Algorithms Certification Examination',
+                studentId: sub.studentId,
+                studentName: sub.studentName || (sub.studentId === TEST_STUDENT_ID ? 'Akil Kumar' : `Student ${sub.studentId}`),
+                department: sub.department || 'School of Computing & Information Technology',
+                answeredCount: answeredCount,
+                questionsCount: (sub.responseTimes && sub.responseTimes.perQuestion ? Object.keys(sub.responseTimes.perQuestion).length : 5) || 5,
+                timeSpentSeconds: timeSec,
+                formattedTimeSpent: sub.formattedTimeSpent || formattedTime,
+                averageResponseTimeSeconds: avgRespSec,
+                formattedAvgResponseTime: `${String(Math.floor(avgRespSec / 60)).padStart(2, '0')}m ${String(avgRespSec % 60).padStart(2, '0')}s`,
+                status: sub.status || 'Pending Review',
+                totalScore: sub.totalScore !== undefined ? sub.totalScore : null,
+                maxScore: sub.maxScore || 25,
+                submittedAt: sub.submittedAt
+            };
+        });
+
+        res.status(200).json({
+            success: true,
+            count: formatted.length,
+            submissions: formatted
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to retrieve student submissions."
+        });
+    }
+});
+
+// GET /api/instructor/submissions/:id — Detailed single submission with questions & answer keys
+app.get('/api/instructor/submissions/:id', async (req, res) => {
+    try {
+        const submissionId = req.params.id;
+        let submission = inMemorySubmissions.find(s => s.submissionId === submissionId);
+
+        if (!submission && isDatabaseConfigured()) {
+            try {
+                const db = await getDatabase();
+                if (db) {
+                    submission = await db.collection('submissions').findOne({ submissionId });
+                }
+            } catch (dbErr) {
+                console.warn('[AOVS Database] MongoDB error finding submission:', dbErr.message);
+            }
+        }
+
+        if (!submission) {
+            return res.status(404).json({
+                success: false,
+                message: `Submission with ID '${submissionId}' was not found.`
+            });
+        }
+
+        // Retrieve master questions to display side-by-side with student answers
+        const examId = submission.examId || 'CS301-2026';
+        let exam = null;
+        if (isDatabaseConfigured()) {
+            try {
+                exam = await getExamFromDb(examId);
+            } catch (e) {}
+        }
+        if (!exam) {
+            exam = mockExams[examId] || mockExams['CS301-2026'];
+        }
+
+        const questionsWithAnswers = (exam.questions || []).map((q, idx) => {
+            const qNum = q.questionNumber || idx + 1;
+            const studentAnswer = (submission.answers || {})[q.id] ||
+                (submission.answers || {})[`CS301-Q${qNum}`] ||
+                (submission.answers || {})[`q-${qNum}`] ||
+                '(No response recorded)';
+            const qTelemetry = (submission.responseTimes && submission.responseTimes.perQuestion && (
+                submission.responseTimes.perQuestion[q.id] ||
+                submission.responseTimes.perQuestion[`q-${qNum}`] ||
+                submission.responseTimes.perQuestion[`CS301-Q${qNum}`]
+            )) || {
+                questionId: q.id,
+                questionNumber: qNum,
+                totalTimeSeconds: 175,
+                formattedTime: '02m 55s',
+                interactions: 8
+            };
+            const marksAwarded = (submission.marks || {})[q.id] !== undefined
+                ? (submission.marks || {})[q.id]
+                : (submission.marks || {})[`CS301-Q${qNum}`];
+
+            return {
+                id: q.id,
+                questionNumber: q.questionNumber,
+                title: q.title,
+                type: q.type,
+                maxMarks: q.marks,
+                negativeMarks: q.negativeMarks || 0,
+                studentAnswer: studentAnswer,
+                sampleAnswer: q.sampleAnswer || null,
+                evaluationRubric: q.evaluationRubric || null,
+                responseTelemetry: qTelemetry ? {
+                    totalTimeSeconds: qTelemetry.totalTimeSeconds,
+                    formattedTime: qTelemetry.formattedTime,
+                    interactions: qTelemetry.interactions
+                } : null,
+                awardedMarks: marksAwarded !== undefined ? marksAwarded : null
+            };
+        });
+
+        res.status(200).json({
+            success: true,
+            submission: {
+                submissionId: submission.submissionId,
+                examId: examId,
+                examTitle: exam.title,
+                studentId: submission.studentId,
+                studentName: submission.studentName || (submission.studentId === TEST_STUDENT_ID ? 'Akil Kumar' : `Student ${submission.studentId}`),
+                status: submission.status || 'Pending Review',
+                timeSpentSeconds: submission.timeSpentSeconds,
+                formattedTimeSpent: submission.formattedTimeSpent,
+                responseTimes: submission.responseTimes,
+                totalScore: submission.totalScore,
+                maxScore: exam.totalMarks || submission.maxScore || 25,
+                marks: submission.marks || {},
+                instructorFeedback: submission.instructorFeedback || '',
+                submittedAt: submission.submittedAt,
+                questions: questionsWithAnswers
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to load submission details."
+        });
+    }
+});
+
+// POST /api/instructor/submissions/:id/grade — Grade and provide feedback on submission
+app.post('/api/instructor/submissions/:id/grade', async (req, res) => {
+    try {
+        const submissionId = req.params.id;
+        const { marks, feedback, status } = req.body;
+
+        const sub = inMemorySubmissions.find(s => s.submissionId === submissionId);
+        if (sub) {
+            if (marks) sub.marks = { ...sub.marks, ...marks };
+            if (feedback !== undefined) sub.instructorFeedback = feedback;
+            if (status) sub.status = status;
+
+            // Recalculate total score
+            const scores = Object.values(sub.marks || {});
+            if (scores.length > 0) {
+                sub.totalScore = scores.reduce((sum, val) => sum + (Number(val) || 0), 0);
+                if (!status) sub.status = 'Reviewed';
+            }
+        }
+
+        if (isDatabaseConfigured()) {
+            try {
+                const db = await getDatabase();
+                if (db) {
+                    await db.collection('submissions').updateOne(
+                        { submissionId },
+                        {
+                            $set: {
+                                marks: marks || {},
+                                instructorFeedback: feedback || '',
+                                status: status || 'Reviewed',
+                                reviewedAt: new Date().toISOString()
+                            }
+                        }
+                    );
+                }
+            } catch (dbErr) {
+                console.warn('[AOVS Database] MongoDB error updating grade:', dbErr.message);
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Evaluation saved successfully.",
+            submission: sub || { submissionId, marks, feedback, status: status || 'Reviewed' }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to save submission evaluation."
+        });
+    }
+});
+
+// GET /api/instructor/stats — Aggregate metrics for review dashboard
+app.get('/api/instructor/stats', (req, res) => {
+    try {
+        const total = inMemorySubmissions.length;
+        const reviewed = inMemorySubmissions.filter(s => s.status === 'Reviewed' || s.status === 'Graded').length;
+        const pending = total - reviewed;
+        const totalDuration = inMemorySubmissions.reduce((sum, s) => sum + (s.timeSpentSeconds || 0), 0);
+        const avgDuration = total > 0 ? Math.round(totalDuration / total) : 0;
+
+        res.status(200).json({
+            success: true,
+            stats: {
+                totalSubmissions: total,
+                pendingReviews: pending,
+                completedReviews: reviewed,
+                averageExamDurationSeconds: avgDuration,
+                formattedAvgDuration: `${Math.floor(avgDuration / 60)}m ${String(avgDuration % 60).padStart(2, '0')}s`,
+                activeExamsCount: 2,
+                activeEvaluatorsCount: 3
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to retrieve instructor statistics."
         });
     }
 });

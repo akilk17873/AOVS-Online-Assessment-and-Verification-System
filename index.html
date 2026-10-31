@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AOVS — Online Assessment &amp; Verification System</title>
     <meta name="description" content="Next-Generation Online Assessment &amp; Intelligent Verification Platform. Secure, AI-proctored exams and tamper-proof academic credentials." />
-    <script type="module" crossorigin src="./assets/index-mxWvsbTw.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DFD7ok7k.css">
+    <script type="module" crossorigin src="./assets/index-DzhYVOng.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CruhKkK3.css">
   </head>
   <body>
     <div id="root"></div>
@@ -23,17 +23,41 @@
       </a>
     </div>
 
+    <!-- Active Instructor Session Floating Widget -->
+    <div id="activeInstructorSessionWidget" style="display: none; position: fixed; bottom: 24px; right: 24px; z-index: 9999; background: rgba(24, 24, 27, 0.95); border: 1px solid rgba(56, 189, 248, 0.5); backdrop-filter: blur(12px); border-radius: 9999px; padding: 8px 18px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); font-family: system-ui, -apple-system, sans-serif; align-items: center; gap: 12px;">
+      <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 8px #38bdf8;"></span>
+      <span style="color: #dfdff2; font-size: 13px; font-weight: 500;">
+        Evaluator: <strong id="sessionInstructorName" style="color: #38bdf8;">Instructor</strong>
+      </span>
+      <a href="/Instructor/dashboard.html" style="background: #38bdf8; color: #000; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 9999px; text-decoration: none; transition: opacity 0.2s;">
+        Dashboard &rarr;
+      </a>
+    </div>
+
     <script>
       (function() {
         try {
-          const stored = sessionStorage.getItem('aovs_student');
-          if (stored) {
-            const student = JSON.parse(stored);
+          const studentStored = sessionStorage.getItem('aovs_student');
+          if (studentStored) {
+            const student = JSON.parse(studentStored);
             if (student && student.studentId) {
               const widget = document.getElementById('activeStudentSessionWidget');
               const nameEl = document.getElementById('sessionStudentName');
               if (widget && nameEl) {
                 nameEl.textContent = student.name || student.studentId;
+                widget.style.display = 'inline-flex';
+              }
+            }
+          }
+
+          const instructorStored = sessionStorage.getItem('aovs_instructor');
+          if (instructorStored) {
+            const instructor = JSON.parse(instructorStored);
+            if (instructor && instructor.name) {
+              const widget = document.getElementById('activeInstructorSessionWidget');
+              const nameEl = document.getElementById('sessionInstructorName');
+              if (widget && nameEl) {
+                nameEl.textContent = instructor.name;
                 widget.style.display = 'inline-flex';
               }
             }

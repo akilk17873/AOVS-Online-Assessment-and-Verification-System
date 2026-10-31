@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instructor &amp; Admin Portal — AOVS Review Dashboard</title>
+    <link rel="stylesheet" href="login.css">
+    <!-- Font Awesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="login-container">
+        <!-- Left Side: Form -->
+        <div class="login-left">
+            <div class="brand-nav">
+                <a href="/" class="brand" title="Return to AOVS Homepage">
+                    <i class="fa-solid fa-graduation-cap logo-icon"></i>
+                    <span class="brand-text">AOVS</span>
+                </a>
+                <a href="/" class="back-link" title="Return to Home Page">
+                    <i class="fa-solid fa-arrow-left"></i> Home
+                </a>
+            </div>
+            
+            <div class="role-badge">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>ACADEMIC FACULTY &amp; EVALUATION</span>
+            </div>
+
+            <h1 class="page-title">Instructor Login</h1>
+            <p class="page-subtitle">Access the student submission review dashboard, grade assessments, and inspect response time telemetry.</p>
+            
+            <form id="instructorLoginForm">
+                <div class="input-group">
+                    <label for="instructorId">Instructor ID or Email</label>
+                    <div class="input-wrapper">
+                        <i class="fa-regular fa-id-badge input-icon"></i>
+                        <input type="text" id="instructorId" placeholder="e.g. INST001 or admin" autocomplete="username">
+                    </div>
+                    <span class="error-message" id="instructorIdError"></span>
+                </div>
+                
+                <div class="input-group">
+                    <label for="password">Security Password</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock input-icon"></i>
+                        <input type="password" id="password" placeholder="Enter your credentials password" autocomplete="current-password">
+                        <button type="button" id="togglePasswordBtn" class="toggle-pwd-btn" title="Show / Hide Password">
+                            <i class="fa-regular fa-eye"></i>
+                        </button>
+                    </div>
+                    <span class="error-message" id="passwordError"></span>
+                </div>
+                
+                <div class="form-options">
+                    <label class="remember-me">
+                        <input type="checkbox" id="rememberMe">
+                        <span>Remember session on this device</span>
+                    </label>
+                    <a href="#" class="forgot-pwd">Reset Credentials?</a>
+                </div>
+                
+                <button type="submit" class="login-button" id="submitLoginBtn">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In to Review Dashboard
+                </button>
+                
+                <!-- Quick Demo Credentials Box -->
+                <div class="demo-credentials-box">
+                    <div class="demo-header">
+                        <strong class="demo-title"><i class="fa-solid fa-bolt"></i> Demo Evaluator Credentials:</strong>
+                    </div>
+                    <div class="demo-btn-group">
+                        <button type="button" id="fillInstructorDemoBtn" class="demo-fill-btn instructor-btn" title="Auto-fill Instructor Profile (Prof. Darshan K)">
+                            <span>Instructor:</span> <code>INST001</code> / <code>Instructor@123</code>
+                        </button>
+                        <button type="button" id="fillAdminDemoBtn" class="demo-fill-btn admin-btn" title="Auto-fill System Administrator">
+                            <span>Admin:</span> <code>admin</code> / <code>Admin@123</code>
+                        </button>
+                    </div>
+                </div>
+            </form>
+            
+            <!-- Dynamic Alert / Success Message -->
+            <div id="successMessage" class="success-message"></div>
+            
+            <!-- Redirection Indicator -->
+            <div id="redirectBanner" class="redirect-banner" style="display: none;">
+                <div class="redirect-content">
+                    <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    <span>Authenticating credentials &amp; loading Review Dashboard...</span>
+                </div>
+                <div class="redirect-link-wrap">
+                    <a id="directDashboardLink" href="dashboard.html">Click here if not redirected automatically &rarr;</a>
+                </div>
+            </div>
+            
+            <div class="form-footer">
+                <div class="switch-portal">
+                    <i class="fa-solid fa-user-graduate"></i>
+                    <span>Student taking an assessment?</span>
+                    <a href="../Student%20Login/Creating%20Login_UI/index.html" class="portal-link">Student Login &rarr;</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Side: Graphic/Information Showcase -->
+        <div class="login-right">
+            <div class="right-content">
+                <div class="right-bg-graphic">
+                    <div class="glow-line glow-line-1"></div>
+                    <div class="glow-line glow-line-2"></div>
+                    <div class="grid-overlay"></div>
+                </div>
+
+                <div class="right-text-content">
+                    <span class="right-brand">AOVS FACULTY CONSOLE</span>
+                    <h2>Intelligent Assessment Review &amp; Analytics</h2>
+                    <p class="description">
+                        Evaluate written answers, analyze question telemetry, verify response times, and provide student feedback from an enterprise proctoring dashboard.
+                    </p>
+
+                    <!-- Feature Highlights List -->
+                    <div class="feature-pills">
+                        <div class="feature-pill">
+                            <i class="fa-solid fa-stopwatch feature-icon"></i>
+                            <div>
+                                <h4>Response Time Telemetry</h4>
+                                <p>Track seconds and interactions spent on each individual question</p>
+                            </div>
+                        </div>
+
+                        <div class="feature-pill">
+                            <i class="fa-solid fa-file-pen feature-icon"></i>
+                            <div>
+                                <h4>Grading &amp; Rubrics</h4>
+                                <p>Side-by-side student answers, confidential rubrics, and feedback</p>
+                            </div>
+                        </div>
+
+                        <div class="feature-pill">
+                            <i class="fa-solid fa-user-shield feature-icon"></i>
+                            <div>
+                                <h4>Role-Based Access Control</h4>
+                                <p>Separate, secure authorization layer for academic personnel</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="faculty-quote-card">
+                        <div class="quote-header">
+                            <div class="avatar-circle">DK</div>
+                            <div>
+                                <strong style="color: #edff66;">Prof. Darshan K</strong>
+                                <span style="display: block; font-size: 11px; color: #a1a1aa;">Lead Assessment Evaluator &bull; SCIT</span>
+                            </div>
+                        </div>
+                        <p class="quote-text">
+                            "The response time breakdown makes evaluating written comprehension effortless and detects authentic comprehension instantly."
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="login.js"></script>
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instructor Review Dashboard — AOVS</title>
+    <!-- Font Awesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="dashboard.css">
+    
+    <!-- Role-Based Access Guard: Protect dashboard from unauthenticated access -->
+    <script>
+        (function() {
+            try {
+                const session = sessionStorage.getItem('aovs_instructor');
+                if (!session) {
+                    const loginUrl = window.location.protocol === 'file:' ? 'login.html' : '/Instructor/login.html';
+                    window.location.replace(loginUrl);
+                }
+            } catch (e) {}
+        })();
+    </script>
+</head>
+<body>
+    <!-- Top Navigation Header -->
+    <header class="dashboard-header">
+        <div class="header-left">
+            <a href="/" class="brand" title="AOVS Home">
+                <i class="fa-solid fa-graduation-cap logo-icon"></i>
+                <span class="brand-text">AOVS</span>
+            </a>
+            <div class="header-divider"></div>
+            <div class="dashboard-title-wrap">
+                <h1 class="dashboard-title">Instructor Review Dashboard</h1>
+                <span class="department-tag" id="instructorDepartment">School of Computing &amp; IT</span>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <!-- Active Evaluator Info -->
+            <div class="evaluator-profile">
+                <div class="evaluator-avatar" id="evaluatorAvatar">DK</div>
+                <div class="evaluator-meta">
+                    <strong class="evaluator-name" id="evaluatorName">Prof. Darshan K</strong>
+                    <span class="evaluator-role" id="evaluatorRole">Lead Evaluator &bull; Instructor</span>
+                </div>
+            </div>
+
+            <a href="/" class="header-action-btn" title="Back to Homepage">
+                <i class="fa-solid fa-house"></i>
+                <span>Home</span>
+            </a>
+
+            <!-- Sign Out Button -->
+            <button type="button" class="logout-btn" id="logoutBtn" title="Sign out of Evaluator Session">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                <span>Sign Out</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="dashboard-main">
+        <!-- Top Statistics Cards -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon-wrap icon-purple">
+                    <i class="fa-solid fa-inbox"></i>
+                </div>
+                <div class="stat-data">
+                    <span class="stat-label">Total Submissions</span>
+                    <strong class="stat-value" id="statTotalSubmissions">--</strong>
+                    <span class="stat-note">Across active course assessments</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon-wrap icon-amber">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <div class="stat-data">
+                    <span class="stat-label">Pending Reviews</span>
+                    <strong class="stat-value text-amber" id="statPendingReviews">--</strong>
+                    <span class="stat-note">Awaiting grading &amp; feedback</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon-wrap icon-emerald">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div class="stat-data">
+                    <span class="stat-label">Evaluated</span>
+                    <strong class="stat-value text-emerald" id="statEvaluated">--</strong>
+                    <span class="stat-note">Graded with written feedback</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon-wrap icon-blue">
+                    <i class="fa-solid fa-stopwatch"></i>
+                </div>
+                <div class="stat-data">
+                    <span class="stat-label">Avg Student Response Time</span>
+                    <strong class="stat-value text-blue" id="statAvgDuration">--</strong>
+                    <span class="stat-note">Telemetry aggregated per question</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Submissions Section -->
+        <section class="submissions-section">
+            <div class="section-toolbar">
+                <div class="toolbar-left">
+                    <h2 class="section-heading">Student Assessments for Review</h2>
+                    <span class="section-subheading">Inspect submitted written answers, review per-question time telemetry, and assign evaluations.</span>
+                </div>
+
+                <div class="toolbar-right">
+                    <!-- Search Input -->
+                    <div class="search-wrap">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="searchInput" placeholder="Search student ID, name, or exam...">
+                    </div>
+
+                    <!-- Status Filter Dropdown -->
+                    <select id="filterStatus" class="filter-select">
+                        <option value="all">All Statuses</option>
+                        <option value="Pending Review">Pending Review</option>
+                        <option value="Reviewed">Reviewed / Graded</option>
+                    </select>
+
+                    <!-- Refresh Button -->
+                    <button type="button" id="refreshBtn" class="refresh-btn" title="Refresh Submissions">
+                        <i class="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Submissions Table Card -->
+            <div class="table-card">
+                <div class="table-container">
+                    <table class="submissions-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Assessment &amp; Course</th>
+                                <th>Questions</th>
+                                <th>Total Time</th>
+                                <th>Avg Response Time</th>
+                                <th>Status</th>
+                                <th>Score</th>
+                                <th style="text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="submissionsTableBody">
+                            <tr>
+                                <td colspan="8" class="loading-cell">
+                                    <i class="fa-solid fa-circle-notch fa-spin"></i> Loading student submissions...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Review & Grading Modal Drawer -->
+    <div class="modal-backdrop" id="reviewModal" style="display: none;">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <span class="badge-eval">ASSESSMENT EVALUATION</span>
+                    <h3 class="modal-student-name" id="modalStudentName">Student Submission Review</h3>
+                    <div class="modal-meta-row">
+                        <span id="modalStudentId" class="meta-pill"><i class="fa-regular fa-id-card"></i> --</span>
+                        <span id="modalExamTitle" class="meta-pill"><i class="fa-solid fa-book"></i> --</span>
+                        <span id="modalTotalTime" class="meta-pill"><i class="fa-solid fa-stopwatch"></i> --</span>
+                        <span id="modalStatusBadge" class="status-badge pending">Pending</span>
+                    </div>
+                </div>
+                <button type="button" class="close-modal-btn" id="closeModalBtn" title="Close evaluation drawer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="modal-body" id="modalBody">
+                <!-- Question & Answer Evaluation Blocks Rendered Here -->
+            </div>
+
+            <div class="modal-footer">
+                <div class="footer-summary">
+                    <span>Total Evaluation Score: <strong id="modalCalculatedScore" style="color: #edff66; font-size: 16px;">--</strong> / <span id="modalMaxScore">25</span></span>
+                </div>
+                <div class="footer-actions">
+                    <button type="button" class="btn-cancel" id="cancelModalBtn">Cancel</button>
+                    <button type="button" class="btn-save-grade" id="saveGradeBtn">
+                        <i class="fa-solid fa-check-double"></i> Save Evaluation &amp; Grade
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="toast-notification"></div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
