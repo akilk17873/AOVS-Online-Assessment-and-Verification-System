@@ -88,6 +88,13 @@ const Hero = () => {
                 containerClass="bg-yellow-300 flex-center gap-1 font-bold text-black hover:bg-yellow-400"
               />
               <Button
+                id="hero-instructor-portal"
+                title="Instructor Portal"
+                href="/Instructor/login.html"
+                leftIcon={<TiLocationArrow />}
+                containerClass="bg-sky-400/20 text-sky-200 backdrop-blur border border-sky-400/30 flex-center gap-1 hover:bg-sky-400/30 font-semibold"
+              />
+              <Button
                 id="hero-exam-portal"
                 title="Live Assessment"
                 href="/Exam/index.html"

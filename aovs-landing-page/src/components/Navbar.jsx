@@ -94,6 +94,13 @@ const NavBar = () => {
               containerClass="bg-[#edff66] md:flex hidden items-center justify-center gap-1 font-semibold text-black hover:bg-yellow-300"
             />
             <Button
+              id="instructor-portal-nav"
+              title="Instructor Portal"
+              href="/Instructor/login.html"
+              rightIcon={<TiLocationArrow />}
+              containerClass="bg-white/10 md:flex hidden items-center justify-center gap-1 font-medium text-cyan-300 hover:bg-white/20 border border-cyan-400/30 text-xs"
+            />
+            <Button
               id="exam-portal-nav"
               title="Exam Portal"
               href="/Exam/index.html"

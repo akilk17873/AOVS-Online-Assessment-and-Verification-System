@@ -100,6 +100,9 @@ document.getElementById('loginForm').addEventListener('submit', function(event) 
             } else if (status === 401) {
                 successMessage.textContent = 'Invalid student ID or password';
                 successMessage.style.color = '#ef4444';
+            } else if (status === 403) {
+                successMessage.textContent = data.message || 'Access denied: Instructor credentials cannot access student portal.';
+                successMessage.style.color = '#ef4444';
             } else if (status === 400) {
                 successMessage.textContent = data.message || 'Missing/invalid credentials';
                 successMessage.style.color = '#ef4444';
