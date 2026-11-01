@@ -16,6 +16,15 @@ const TEST_ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || 'Admin@123';
 
 const path = require('path');
 
+// SCRUM-13: Risk Scoring Engine Integration
+const {
+    getRiskConfig,
+    updateRiskConfig,
+    resetRiskConfig,
+    calculateAnswerRisk,
+    calculateExamRisk
+} = require('./risk-scorer');
+
 // Serve static repository files so frontend can be accessed directly
 app.use(express.static(path.join(__dirname, '.')));
 
@@ -439,7 +448,25 @@ const inMemorySubmissions = [
         totalScore: null,
         maxScore: 25,
         instructorFeedback: '',
-        submittedAt: new Date(Date.now() - 3600000).toISOString()
+        submittedAt: new Date(Date.now() - 3600000).toISOString(),
+        riskScore: 12,
+        riskLevel: 'LOW',
+        flagged: false,
+        requiresVerification: false,
+        riskAnalysis: {
+            compositeScore: 12,
+            riskLevel: 'LOW',
+            threshold: 65,
+            flagged: false,
+            requiresVerification: false,
+            perAnswer: {
+                'q-1': { score: 10, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 2.4, timeSpentSeconds: 175 } },
+                'q-2': { score: 12, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 2.2, timeSpentSeconds: 190 } },
+                'q-3': { score: 15, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 2.6, timeSpentSeconds: 215 } },
+                'q-4': { score: 10, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 2.1, timeSpentSeconds: 180 } },
+                'q-5': { score: 10, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 2.0, timeSpentSeconds: 180 } }
+            }
+        }
     },
     {
         submissionId: 'SUB-CS301-102',
@@ -473,7 +500,93 @@ const inMemorySubmissions = [
         totalScore: 23,
         maxScore: 25,
         instructorFeedback: 'Outstanding analytical explanations and thorough complexity justifications.',
-        submittedAt: new Date(Date.now() - 7200000).toISOString()
+        submittedAt: new Date(Date.now() - 7200000).toISOString(),
+        riskScore: 22,
+        riskLevel: 'LOW',
+        flagged: false,
+        requiresVerification: false,
+        riskAnalysis: {
+            compositeScore: 22,
+            riskLevel: 'LOW',
+            threshold: 65,
+            flagged: false,
+            requiresVerification: false,
+            perAnswer: {
+                'q-1': { score: 18, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 2.8, timeSpentSeconds: 210 } },
+                'q-2': { score: 20, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 2.5, timeSpentSeconds: 240 } },
+                'q-3': { score: 25, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 3.2, timeSpentSeconds: 230 } },
+                'q-4': { score: 20, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 2.4, timeSpentSeconds: 220 } },
+                'q-5': { score: 20, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 2.4, timeSpentSeconds: 220 } }
+            }
+        }
+    },
+    {
+        submissionId: 'SUB-CS301-103',
+        examId: 'CS301-2026',
+        examTitle: 'Data Structures & Algorithms Certification Examination',
+        studentId: 'STU103',
+        studentName: 'Rahul Verma',
+        department: 'School of Computing & Information Technology',
+        answers: {
+            'q-1': 'Hash tables provide instant constant time lookup O(1) via mathematical indexing. When buckets collide, chaining chains linked elements while open addressing probes subsequent indices sequentially or quadratically.',
+            'q-2': 'A standard BST lacks automatic balance factors, degenerating into O(n) linked lists in worst cases. AVL trees strictly enforce a maximum balance factor difference of 1 using rotations to guarantee O(log n) height.',
+            'q-3': 'QuickSort suffers O(n^2) when an extreme element is picked as pivot repeatedly on already sorted inputs.',
+            'q-4': 'Red-Black trees maintain color properties to enforce logarithmic depth without frequent rebalancing.',
+            'q-5': 'Memoization records overlapping subproblems in a lookup table to achieve polynomial runtime.'
+        },
+        timeSpentSeconds: 210,
+        formattedTimeSpent: '03m 30s',
+        responseTimes: {
+            totalExamTimeSeconds: 210,
+            averageTimePerQuestionSeconds: 42,
+            perQuestion: {
+                'q-1': { questionId: 'q-1', questionNumber: 1, totalTimeSeconds: 12, formattedTime: '00m 12s', interactions: 2 },
+                'q-2': { questionId: 'q-2', questionNumber: 2, totalTimeSeconds: 15, formattedTime: '00m 15s', interactions: 2 },
+                'q-3': { questionId: 'q-3', questionNumber: 3, totalTimeSeconds: 40, formattedTime: '00m 40s', interactions: 3 },
+                'q-4': { questionId: 'q-4', questionNumber: 4, totalTimeSeconds: 50, formattedTime: '00m 50s', interactions: 3 },
+                'q-5': { questionId: 'q-5', questionNumber: 5, totalTimeSeconds: 93, formattedTime: '01m 33s', interactions: 4 }
+            }
+        },
+        status: 'Pending Review',
+        marks: {},
+        totalScore: null,
+        maxScore: 25,
+        instructorFeedback: '',
+        submittedAt: new Date(Date.now() - 1800000).toISOString(),
+        riskScore: 86,
+        riskLevel: 'HIGH',
+        flagged: true,
+        requiresVerification: true,
+        riskAnalysis: {
+            compositeScore: 86,
+            riskLevel: 'HIGH',
+            threshold: 65,
+            flagged: true,
+            requiresVerification: true,
+            perAnswer: {
+                'q-1': {
+                    score: 92,
+                    riskLevel: 'HIGH',
+                    flagged: true,
+                    requiresVerification: true,
+                    signals: { pasteScore: 95, timeScore: 88 },
+                    metrics: { pasteCount: 2, pastedChars: 245, typingSpeedCps: 20.4, timeSpentSeconds: 12, answerLength: 245 },
+                    flagReason: '2 paste event(s) detected (245 chars pasted); Elevated typing rate of 20.4 chars/sec; Abnormally brief formulation time (12s for 245 chars)'
+                },
+                'q-2': {
+                    score: 84,
+                    riskLevel: 'HIGH',
+                    flagged: true,
+                    requiresVerification: true,
+                    signals: { pasteScore: 85, timeScore: 82 },
+                    metrics: { pasteCount: 1, pastedChars: 230, typingSpeedCps: 15.3, timeSpentSeconds: 15, answerLength: 230 },
+                    flagReason: '1 paste event(s) detected (230 chars pasted); Elevated typing rate of 15.3 chars/sec; Abnormally brief formulation time (15s for 230 chars)'
+                },
+                'q-3': { score: 18, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 2.8, timeSpentSeconds: 40 } },
+                'q-4': { score: 15, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 2.2, timeSpentSeconds: 50 } },
+                'q-5': { score: 12, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 1.8, timeSpentSeconds: 93 } }
+            }
+        }
     }
 ];
 
@@ -627,7 +740,7 @@ app.get('/api/exams/:id', async (req, res) => {
 // POST /api/exams/:id/submit — Submit student responses (SCRUM-11: Response Time Tracking)
 app.post('/api/exams/:id/submit', async (req, res) => {
     try {
-        const { studentId, answers, timeSpentSeconds, responseTimes } = req.body;
+        const { studentId, answers, timeSpentSeconds, responseTimes, telemetry } = req.body;
         const examId = req.params.id;
 
         if (!studentId) {
@@ -648,6 +761,21 @@ app.post('/api/exams/:id/submit', async (req, res) => {
         const qCount = (exam && exam.questions ? exam.questions.length : 0) || Object.keys(answers || {}).length || 1;
         const avgResponseTimeSeconds = Math.round(totalDuration / qCount);
 
+        // SCRUM-13: Calculate Weighted Risk Score from response time and paste telemetry
+        const perQTelemetry = (telemetry && telemetry.perQuestion) || {};
+        if (Object.keys(perQTelemetry).length === 0 && responseTimes && responseTimes.perQuestion) {
+            Object.entries(responseTimes.perQuestion).forEach(([qId, tObj]) => {
+                const ansText = (answers || {})[qId] || '';
+                perQTelemetry[qId] = {
+                    timeSpentSeconds: tObj.totalTimeSeconds || tObj.timeSpentSeconds || 0,
+                    pasteCount: 0,
+                    pastedChars: 0,
+                    answerLength: typeof ansText === 'string' ? ansText.trim().length : 0
+                };
+            });
+        }
+        const riskAnalysis = calculateExamRisk(perQTelemetry, answers || {});
+
         const submissionRecord = {
             submissionId,
             examId,
@@ -659,6 +787,12 @@ app.post('/api/exams/:id/submit', async (req, res) => {
                 averageTimePerQuestionSeconds: avgResponseTimeSeconds,
                 perQuestion: {}
             },
+            telemetry: telemetry || { perQuestion: perQTelemetry },
+            riskScore: riskAnalysis.compositeScore,
+            riskLevel: riskAnalysis.riskLevel,
+            flagged: riskAnalysis.flagged,
+            requiresVerification: riskAnalysis.requiresVerification,
+            riskAnalysis: riskAnalysis,
             submittedAt: new Date().toISOString()
         };
 
@@ -671,7 +805,12 @@ app.post('/api/exams/:id/submit', async (req, res) => {
             maxScore: exam && exam.totalMarks ? exam.totalMarks : 25,
             totalScore: null,
             marks: {},
-            instructorFeedback: ''
+            instructorFeedback: '',
+            riskScore: riskAnalysis.compositeScore,
+            riskLevel: riskAnalysis.riskLevel,
+            flagged: riskAnalysis.flagged,
+            requiresVerification: riskAnalysis.requiresVerification,
+            riskAnalysis: riskAnalysis
         });
 
         if (isDatabaseConfigured()) {
@@ -698,6 +837,11 @@ app.post('/api/exams/:id/submit', async (req, res) => {
                 formattedTimeSpent,
                 averageResponseTimeSeconds: avgResponseTimeSeconds,
                 responseTimes: submissionRecord.responseTimes,
+                riskScore: riskAnalysis.compositeScore,
+                riskLevel: riskAnalysis.riskLevel,
+                flagged: riskAnalysis.flagged,
+                requiresVerification: riskAnalysis.requiresVerification,
+                riskAnalysis: riskAnalysis,
                 submittedAt: new Date().toLocaleTimeString()
             }
         });
@@ -830,8 +974,56 @@ app.post(['/api/instructor/login', '/api/admin/login'], (req, res) => {
 });
 
 // ============================================================
-// INSTRUCTOR REVIEW DASHBOARD APIS (SCRUM-8)
-// Endpoints for retrieving submissions, grading, telemetry metrics
+// RISK SCORE CONFIGURATION APIS (SCRUM-13)
+// Configurable threshold & weights management
+// ============================================================
+
+// GET /api/instructor/risk-config — Get active risk calculation thresholds & weights
+app.get('/api/instructor/risk-config', (req, res) => {
+    res.status(200).json({
+        success: true,
+        config: getRiskConfig()
+    });
+});
+
+// POST /api/instructor/risk-config — Dynamically update risk threshold & weights
+app.post('/api/instructor/risk-config', (req, res) => {
+    try {
+        const { threshold, weightPaste, weightTime } = req.body;
+        const updated = updateRiskConfig({
+            threshold: typeof threshold === 'number' ? threshold : undefined,
+            weightPaste: typeof weightPaste === 'number' ? weightPaste : undefined,
+            weightTime: typeof weightTime === 'number' ? weightTime : undefined
+        });
+
+        // Re-evaluate flagged status across in-memory submissions with new threshold
+        inMemorySubmissions.forEach(sub => {
+            if (sub.riskScore !== undefined) {
+                sub.flagged = sub.riskScore >= updated.threshold;
+                sub.requiresVerification = sub.flagged;
+                sub.riskLevel = sub.flagged ? 'HIGH' : (sub.riskScore >= Math.round(updated.threshold * 0.6) ? 'MEDIUM' : 'LOW');
+                if (sub.riskAnalysis) {
+                    sub.riskAnalysis.threshold = updated.threshold;
+                    sub.riskAnalysis.flagged = sub.flagged;
+                    sub.riskAnalysis.requiresVerification = sub.flagged;
+                    sub.riskAnalysis.riskLevel = sub.riskLevel;
+                }
+            }
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "Risk score threshold configuration updated successfully.",
+            config: updated
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: "Failed to update risk configuration." });
+    }
+});
+
+// ============================================================
+// INSTRUCTOR REVIEW DASHBOARD APIS (SCRUM-8 & SCRUM-13)
+// Endpoints for retrieving submissions, grading, telemetry metrics, and risk scores
 // ============================================================
 
 // GET /api/instructor/submissions — List all student submissions with telemetry summaries
@@ -891,7 +1083,12 @@ app.get('/api/instructor/submissions', async (req, res) => {
                 status: sub.status || 'Pending Review',
                 totalScore: sub.totalScore !== undefined ? sub.totalScore : null,
                 maxScore: sub.maxScore || 25,
-                submittedAt: sub.submittedAt
+                submittedAt: sub.submittedAt,
+                // SCRUM-13: Risk score telemetry logged for review
+                riskScore: sub.riskScore !== undefined ? sub.riskScore : (sub.riskAnalysis ? sub.riskAnalysis.compositeScore : 15),
+                riskLevel: sub.riskLevel || (sub.riskAnalysis ? sub.riskAnalysis.riskLevel : 'LOW'),
+                flagged: Boolean(sub.flagged !== undefined ? sub.flagged : (sub.riskAnalysis && sub.riskAnalysis.flagged)),
+                requiresVerification: Boolean(sub.requiresVerification !== undefined ? sub.requiresVerification : (sub.riskAnalysis && sub.riskAnalysis.requiresVerification))
             };
         });
 
@@ -965,6 +1162,22 @@ app.get('/api/instructor/submissions/:id', async (req, res) => {
                 ? (submission.marks || {})[q.id]
                 : (submission.marks || {})[`CS301-Q${qNum}`];
 
+            // SCRUM-13: Attach per-question risk breakdown
+            let qRisk = null;
+            if (submission.riskAnalysis && submission.riskAnalysis.perAnswer) {
+                qRisk = submission.riskAnalysis.perAnswer[q.id] ||
+                    submission.riskAnalysis.perAnswer['q-' + qNum] ||
+                    submission.riskAnalysis.perAnswer['CS301-Q' + qNum];
+            }
+            if (!qRisk) {
+                const qTel = (submission.telemetry && submission.telemetry.perQuestion && (
+                    submission.telemetry.perQuestion[q.id] ||
+                    submission.telemetry.perQuestion['q-' + qNum] ||
+                    submission.telemetry.perQuestion['CS301-Q' + qNum]
+                )) || qTelemetry || {};
+                qRisk = calculateAnswerRisk(qTel, studentAnswer);
+            }
+
             return {
                 id: q.id,
                 questionNumber: q.questionNumber,
@@ -980,7 +1193,8 @@ app.get('/api/instructor/submissions/:id', async (req, res) => {
                     formattedTime: qTelemetry.formattedTime,
                     interactions: qTelemetry.interactions
                 } : null,
-                awardedMarks: marksAwarded !== undefined ? marksAwarded : null
+                awardedMarks: marksAwarded !== undefined ? marksAwarded : null,
+                risk: qRisk
             };
         });
 
@@ -1001,6 +1215,12 @@ app.get('/api/instructor/submissions/:id', async (req, res) => {
                 marks: submission.marks || {},
                 instructorFeedback: submission.instructorFeedback || '',
                 submittedAt: submission.submittedAt,
+                // SCRUM-13: Comprehensive Risk Score logged for review
+                riskScore: submission.riskScore !== undefined ? submission.riskScore : (submission.riskAnalysis ? submission.riskAnalysis.compositeScore : 15),
+                riskLevel: submission.riskLevel || (submission.riskAnalysis ? submission.riskAnalysis.riskLevel : 'LOW'),
+                flagged: Boolean(submission.flagged !== undefined ? submission.flagged : (submission.riskAnalysis && submission.riskAnalysis.flagged)),
+                requiresVerification: Boolean(submission.requiresVerification !== undefined ? submission.requiresVerification : (submission.riskAnalysis && submission.riskAnalysis.requiresVerification)),
+                riskAnalysis: submission.riskAnalysis || null,
                 questions: questionsWithAnswers
             }
         });
@@ -1084,7 +1304,9 @@ app.get('/api/instructor/stats', (req, res) => {
                 averageExamDurationSeconds: avgDuration,
                 formattedAvgDuration: `${Math.floor(avgDuration / 60)}m ${String(avgDuration % 60).padStart(2, '0')}s`,
                 activeExamsCount: 2,
-                activeEvaluatorsCount: 3
+                activeEvaluatorsCount: 3,
+                flaggedSubmissionsCount: inMemorySubmissions.filter(s => s.flagged || (s.riskAnalysis && s.riskAnalysis.flagged)).length,
+                riskThreshold: getRiskConfig().threshold
             }
         });
     } catch (error) {

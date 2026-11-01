@@ -1,6 +1,6 @@
 /**
  * AOVS (Online Assessment and Verification System)
- * SCRUM-8: Instructor Review Dashboard Logic
+ * SCRUM-8 & SCRUM-13: Instructor Review Dashboard & Risk Score Telemetry
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -56,16 +56,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // State
     let allSubmissions = [];
     let activeSubmissionDetail = null;
+    let activeRiskThreshold = 65;
 
     // DOM Elements
     const tableBody = document.getElementById('submissionsTableBody');
     const searchInput = document.getElementById('searchInput');
     const filterStatus = document.getElementById('filterStatus');
+    const filterRisk = document.getElementById('filterRisk');
     const refreshBtn = document.getElementById('refreshBtn');
 
     const statTotalEl = document.getElementById('statTotalSubmissions');
     const statPendingEl = document.getElementById('statPendingReviews');
     const statEvaluatedEl = document.getElementById('statEvaluated');
+    const statFlaggedEl = document.getElementById('statFlaggedReviews');
     const statAvgDurationEl = document.getElementById('statAvgDuration');
 
     const reviewModal = document.getElementById('reviewModal');
@@ -73,6 +76,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelModalBtn = document.getElementById('cancelModalBtn');
     const saveGradeBtn = document.getElementById('saveGradeBtn');
     const toastEl = document.getElementById('toastNotification');
+
+    // Threshold Config Elements (SCRUM-13)
+    const openThresholdBtn = document.getElementById('openThresholdBtn');
+    const thresholdModal = document.getElementById('thresholdModal');
+    const closeThresholdModalBtn = document.getElementById('closeThresholdModalBtn');
+    const cancelThresholdBtn = document.getElementById('cancelThresholdBtn');
+    const saveThresholdBtn = document.getElementById('saveThresholdBtn');
+    const thresholdSlider = document.getElementById('thresholdSlider');
+    const thresholdDisplayValue = document.getElementById('thresholdDisplayValue');
+    const currentThresholdBadge = document.getElementById('currentThresholdBadge');
 
     function showToast(message, isSuccess = true) {
         if (!toastEl) return;
@@ -82,6 +95,24 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             toastEl.style.display = 'none';
         }, 3200);
+    }
+
+    // SCRUM-13: Fetch active risk configuration
+    async function fetchRiskConfig() {
+        try {
+            const res = await fetch(`${getApiBaseUrl()}/api/instructor/risk-config`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.config && typeof data.config.threshold === 'number') {
+                    activeRiskThreshold = data.config.threshold;
+                    if (currentThresholdBadge) currentThresholdBadge.textContent = activeRiskThreshold;
+                    if (thresholdSlider) thresholdSlider.value = activeRiskThreshold;
+                    if (thresholdDisplayValue) thresholdDisplayValue.textContent = activeRiskThreshold;
+                }
+            }
+        } catch (e) {
+            console.warn('Could not fetch risk config:', e);
+        }
     }
 
     // Fetch and render dashboard statistics
@@ -94,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (statTotalEl) statTotalEl.textContent = s.totalSubmissions;
                 if (statPendingEl) statPendingEl.textContent = s.pendingReviews;
                 if (statEvaluatedEl) statEvaluatedEl.textContent = s.completedReviews;
+                if (statFlaggedEl) statFlaggedEl.textContent = s.flaggedSubmissionsCount !== undefined ? s.flaggedSubmissionsCount : 0;
                 if (statAvgDurationEl) statAvgDurationEl.textContent = s.formattedAvgDuration || '--';
             }
         } catch (e) {
@@ -106,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tableBody) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="loading-cell">
+                    <td colspan="9" class="loading-cell">
                         <i class="fa-solid fa-circle-notch fa-spin"></i> Loading student submissions...
                     </td>
                 </tr>
@@ -122,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="loading-cell" style="color: #ef4444;">
+                        <td colspan="9" class="loading-cell" style="color: #ef4444;">
                             Failed to load submissions. Please ensure the backend service is running.
                         </td>
                     </tr>
@@ -131,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="loading-cell" style="color: #ef4444;">
+                    <td colspan="9" class="loading-cell" style="color: #ef4444;">
                         Connection error while loading submissions.
                     </td>
                 </tr>
@@ -139,28 +171,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Render Submissions Table with Filters
+    // Render Submissions Table with Filters (Status & SCRUM-13 Risk)
     function renderSubmissionsTable() {
         if (!tableBody) return;
 
         const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
         const selectedStatus = filterStatus ? filterStatus.value : 'all';
+        const selectedRisk = filterRisk ? filterRisk.value : 'all';
 
         const filtered = allSubmissions.filter(sub => {
             const matchesStatus = (selectedStatus === 'all') || (sub.status === selectedStatus);
+
+            const rScore = typeof sub.riskScore === 'number' ? sub.riskScore : (sub.riskAnalysis ? sub.riskAnalysis.compositeScore : 0);
+            const isFlagged = Boolean(sub.flagged || sub.requiresVerification || (sub.riskAnalysis && sub.riskAnalysis.flagged) || (rScore >= activeRiskThreshold));
+
+            let matchesRisk = true;
+            if (selectedRisk === 'flagged') {
+                matchesRisk = isFlagged;
+            } else if (selectedRisk === 'low') {
+                matchesRisk = !isFlagged;
+            }
+
             const matchesQuery = !query ||
                 (sub.studentId && sub.studentId.toLowerCase().includes(query)) ||
                 (sub.studentName && sub.studentName.toLowerCase().includes(query)) ||
                 (sub.examTitle && sub.examTitle.toLowerCase().includes(query)) ||
                 (sub.submissionId && sub.submissionId.toLowerCase().includes(query));
 
-            return matchesStatus && matchesQuery;
+            return matchesStatus && matchesRisk && matchesQuery;
         });
 
         if (filtered.length === 0) {
             tableBody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="loading-cell">
+                    <td colspan="9" class="loading-cell">
                         No student assessments found matching your filter criteria.
                     </td>
                 </tr>
@@ -174,6 +218,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const scoreDisplay = sub.totalScore !== null
                 ? `<span class="score-text graded">${sub.totalScore} / ${sub.maxScore}</span>`
                 : `<span class="score-text" style="color: #71717a;">Not Graded</span>`;
+
+            // SCRUM-13: Risk Score Rendering
+            const rScore = typeof sub.riskScore === 'number' ? sub.riskScore : (sub.riskAnalysis ? sub.riskAnalysis.compositeScore : 0);
+            const isFlagged = Boolean(sub.flagged || sub.requiresVerification || (rScore >= activeRiskThreshold));
+            let riskClass = 'low';
+            let riskIcon = 'fa-check';
+            let riskText = 'Verified';
+
+            if (isFlagged) {
+                riskClass = 'high';
+                riskIcon = 'fa-triangle-exclamation';
+                riskText = 'Flagged';
+            } else if (rScore >= Math.round(activeRiskThreshold * 0.6)) {
+                riskClass = 'medium';
+                riskIcon = 'fa-circle-exclamation';
+                riskText = 'Medium';
+            }
 
             return `
                 <tr data-submission-id="${sub.submissionId}">
@@ -209,6 +270,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>
                         ${scoreDisplay}
                     </td>
+                    <td>
+                        <span class="risk-badge ${riskClass}" title="Weighted risk score combining response time and paste signals">
+                            <i class="fa-solid ${riskIcon}"></i> ${rScore} &bull; ${riskText}
+                        </span>
+                    </td>
                     <td style="text-align: right;">
                         <button type="button" class="review-btn open-review-btn" data-id="${sub.submissionId}">
                             <i class="fa-solid fa-file-signature"></i> ${isPending ? 'Review &amp; Grade' : 'Inspect &amp; Edit'}
@@ -236,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modalBody) {
             modalBody.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #a1a1aa;">
-                    <i class="fa-solid fa-circle-notch fa-spin"></i> Loading assessment answers &amp; question telemetry...
+                    <i class="fa-solid fa-circle-notch fa-spin"></i> Loading assessment answers, telemetry &amp; risk scores...
                 </div>
             `;
         }
@@ -268,12 +334,61 @@ document.addEventListener('DOMContentLoaded', () => {
             statusBadge.textContent = sub.status;
         }
 
+        // SCRUM-13: Overall Risk Score Badge in Modal Header
+        const modalRiskBadge = document.getElementById('modalRiskBadge');
+        const rScore = typeof sub.riskScore === 'number' ? sub.riskScore : (sub.riskAnalysis ? sub.riskAnalysis.compositeScore : 0);
+        const isFlagged = Boolean(sub.flagged || sub.requiresVerification || (rScore >= activeRiskThreshold));
+
+        if (modalRiskBadge) {
+            modalRiskBadge.className = `risk-badge ${isFlagged ? 'high' : 'low'}`;
+            modalRiskBadge.innerHTML = `<i class="fa-solid ${isFlagged ? 'fa-triangle-exclamation' : 'fa-shield-check'}"></i> Risk Score: ${rScore} (${isFlagged ? 'Flagged' : 'Normal'})`;
+        }
+
         document.getElementById('modalMaxScore').textContent = sub.maxScore;
 
         const modalBody = document.getElementById('modalBody');
         const questions = sub.questions || [];
 
+        // SCRUM-13: Risk Telemetry Overview Banner
+        const riskCardHtml = `
+            <div class="risk-overview-card ${isFlagged ? 'flagged' : ''}">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+                    <div>
+                        <span style="font-size: 11px; font-weight: 800; letter-spacing: 0.8px; color: ${isFlagged ? '#f87171' : '#38bdf8'}; text-transform: uppercase;">
+                            <i class="fa-solid fa-microchip"></i> Telemetry &amp; Integrity Signals (SCRUM-13)
+                        </span>
+                        <h4 style="font-size: 16px; font-weight: 800; color: #ffffff; margin-top: 4px;">
+                            ${isFlagged ? '⚠️ Suspicious Answer Patterns Detected — Manual Verification Required' : '✓ Telemetry Verified — Normal Response Rate & Typing Cadence'}
+                        </h4>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 11px; color: #a1a1aa; display: block;">Composite Risk Score</span>
+                        <strong style="font-size: 22px; font-weight: 800; color: ${isFlagged ? '#ef4444' : '#10b981'}; font-family: monospace;">
+                            ${rScore} <span style="font-size: 13px; color: #71717a;">/ 100</span>
+                        </strong>
+                        <span style="font-size: 10px; color: #a1a1aa; display: block;">Threshold: ${activeRiskThreshold}</span>
+                    </div>
+                </div>
+
+                ${isFlagged ? `
+                    <div class="risk-warning-callout">
+                        <i class="fa-solid fa-triangle-exclamation" style="font-size: 16px; flex-shrink: 0;"></i>
+                        <div>
+                            <strong>Verification Required:</strong>
+                            <span>This submission exceeded the risk threshold (${rScore} &ge; ${activeRiskThreshold}). The system detected rapid response times combined with external paste events. Verify authenticity before finalizing grade.</span>
+                        </div>
+                    </div>
+                ` : `
+                    <div style="font-size: 12px; color: #a1a1aa; margin-top: 4px;">
+                        No anomalies detected. Typing velocity conforms to expected human baseline (&le; 6.0 chars/sec) without excessive paste bursts.
+                    </div>
+                `}
+            </div>
+        `;
+
         modalBody.innerHTML = `
+            ${riskCardHtml}
+
             ${questions.map((q, idx) => {
                 const telemetry = q.responseTelemetry;
                 const timePill = telemetry
@@ -281,6 +396,19 @@ document.addEventListener('DOMContentLoaded', () => {
                          <i class="fa-solid fa-stopwatch"></i> Response Time: ${telemetry.formattedTime} (${telemetry.interactions} interactions)
                        </span>`
                     : '';
+
+                // SCRUM-13: Per-Question Risk Data
+                const qRisk = q.risk || { score: 10, riskLevel: 'LOW', flagged: false, flagReason: '' };
+                const isQFlagged = Boolean(qRisk.flagged);
+                const qRiskPill = `
+                    <span class="q-risk-pill ${isQFlagged ? 'high' : 'low'}" title="Weighted risk computed for this answer">
+                        <i class="fa-solid ${isQFlagged ? 'fa-triangle-exclamation' : 'fa-shield-check'}"></i> Risk: ${qRisk.score}
+                    </span>
+                `;
+
+                const metrics = qRisk.metrics || {};
+                const typingSpeedText = metrics.typingSpeedCps !== undefined ? `${metrics.typingSpeedCps} chars/sec` : '--';
+                const pasteCountText = metrics.pasteCount !== undefined ? `${metrics.pasteCount} paste(s)` : '0 pastes';
 
                 const currentScore = q.awardedMarks !== null ? q.awardedMarks : '';
 
@@ -291,8 +419,25 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="q-number-tag">Question ${q.questionNumber || idx + 1} &bull; ${q.maxMarks} Marks</span>
                                 <h4 class="q-title">${escapeHtml(q.title)}</h4>
                             </div>
-                            ${timePill}
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                ${timePill}
+                                ${qRiskPill}
+                            </div>
                         </div>
+
+                        <!-- SCRUM-13: Telemetry Signals Strip -->
+                        <div style="display: flex; gap: 14px; font-size: 11px; color: #a1a1aa; padding: 6px 10px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                            <span><strong style="color: #dfdff2;">Typing Speed:</strong> ${typingSpeedText}</span>
+                            <span><strong style="color: #dfdff2;">Paste Events:</strong> ${pasteCountText}</span>
+                            ${metrics.pastedChars ? `<span><strong style="color: #f87171;">Pasted Chars:</strong> ${metrics.pastedChars}</span>` : ''}
+                        </div>
+
+                        ${isQFlagged && qRisk.flagReason ? `
+                            <div class="risk-warning-callout">
+                                <i class="fa-solid fa-flag" style="color: #ef4444;"></i>
+                                <span><strong>Flagged Signal:</strong> ${escapeHtml(qRisk.flagReason)}</span>
+                            </div>
+                        ` : ''}
 
                         <div class="student-answer-box">
                             <span class="box-label"><i class="fa-regular fa-comment-dots"></i> Student Written Response:</span>
@@ -419,14 +564,70 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // SCRUM-13: Threshold Configuration Modal Event Handlers
+    if (openThresholdBtn && thresholdModal) {
+        openThresholdBtn.addEventListener('click', () => {
+            if (thresholdSlider) thresholdSlider.value = activeRiskThreshold;
+            if (thresholdDisplayValue) thresholdDisplayValue.textContent = activeRiskThreshold;
+            thresholdModal.style.display = 'flex';
+        });
+    }
+
+    function closeThresholdModal() {
+        if (thresholdModal) thresholdModal.style.display = 'none';
+    }
+
+    if (closeThresholdModalBtn) closeThresholdModalBtn.addEventListener('click', closeThresholdModal);
+    if (cancelThresholdBtn) cancelThresholdBtn.addEventListener('click', closeThresholdModal);
+
+    if (thresholdSlider && thresholdDisplayValue) {
+        thresholdSlider.addEventListener('input', (e) => {
+            thresholdDisplayValue.textContent = e.target.value;
+        });
+    }
+
+    if (saveThresholdBtn) {
+        saveThresholdBtn.addEventListener('click', async () => {
+            const newThreshold = parseInt(thresholdSlider.value, 10);
+            saveThresholdBtn.disabled = true;
+            saveThresholdBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Applying...`;
+
+            try {
+                const res = await fetch(`${getApiBaseUrl()}/api/instructor/risk-config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ threshold: newThreshold })
+                });
+
+                if (res.ok) {
+                    activeRiskThreshold = newThreshold;
+                    if (currentThresholdBadge) currentThresholdBadge.textContent = newThreshold;
+                    showToast(`Risk threshold updated to ${newThreshold}%. Submissions re-evaluated!`);
+                    closeThresholdModal();
+                    await fetchSubmissions();
+                    await fetchStats();
+                } else {
+                    showToast('Failed to update risk threshold', false);
+                }
+            } catch (e) {
+                showToast('Network error while updating threshold', false);
+            } finally {
+                saveThresholdBtn.disabled = false;
+                saveThresholdBtn.innerHTML = `<i class="fa-solid fa-check"></i> Apply &amp; Re-evaluate Submissions`;
+            }
+        });
+    }
+
     // Search and filter listeners
     if (searchInput) searchInput.addEventListener('input', renderSubmissionsTable);
     if (filterStatus) filterStatus.addEventListener('change', renderSubmissionsTable);
+    if (filterRisk) filterRisk.addEventListener('change', renderSubmissionsTable);
     if (refreshBtn) {
         refreshBtn.addEventListener('click', async () => {
+            await fetchRiskConfig();
             await fetchSubmissions();
             await fetchStats();
-            showToast('Submissions refreshed');
+            showToast('Submissions and risk scores refreshed');
         });
     }
 
@@ -441,6 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initial load
+    fetchRiskConfig();
     fetchStats();
     fetchSubmissions();
 });

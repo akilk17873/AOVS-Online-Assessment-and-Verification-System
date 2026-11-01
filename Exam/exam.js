@@ -25,6 +25,7 @@
 
     // SCRUM-11: Response Time Tracking State
     let questionResponseTimes = {}; // { [qId]: { timeSpentSeconds: 0, firstResponseSeconds: null, visitCount: 0, answered: false } }
+    let questionTelemetry = {};     // SCRUM-13: Telemetry Signals State (pasteCount, pastedChars, keystrokes)
     let activeQuestionStartTime = null;
 
     // DOM Elements Cache
@@ -364,6 +365,35 @@
             questionResponseTimes[qId].firstResponseSeconds = examElapsed;
         }
         persistCurrentState();
+    }
+
+    /**
+     * SCRUM-13: Question Telemetry Signals (Paste & Keystroke Tracking)
+     */
+    function initQuestionTelemetry(qId) {
+        if (!qId) return;
+        if (!questionTelemetry[qId]) {
+            questionTelemetry[qId] = {
+                pasteCount: 0,
+                pastedChars: 0,
+                keystrokeCount: 0
+            };
+        }
+    }
+
+    function recordPasteEvent(qId, pastedTextLength) {
+        if (!qId) return;
+        initQuestionTelemetry(qId);
+        questionTelemetry[qId].pasteCount += 1;
+        questionTelemetry[qId].pastedChars += Math.max(0, pastedTextLength || 0);
+        recordResponseInteraction(qId);
+        persistCurrentState();
+    }
+
+    function recordKeystroke(qId) {
+        if (!qId) return;
+        initQuestionTelemetry(qId);
+        questionTelemetry[qId].keystrokeCount += 1;
     }
 
     function updateActiveQuestionTimeBadge() {
@@ -974,6 +1004,25 @@
 
         const timeSpent = Math.max(0, totalExamDurationSeconds - timeRemainingSeconds);
         const avgTime = questions.length > 0 ? Math.round(timeSpent / questions.length) : 0;
+
+        // SCRUM-13: Compile per-question telemetry signals
+        const combinedTelemetry = {};
+        questions.forEach(q => {
+            const timeObj = questionResponseTimes[q.id] || { timeSpentSeconds: 0 };
+            const telObj = questionTelemetry[q.id] || { pasteCount: 0, pastedChars: 0, keystrokeCount: 0 };
+            const ansText = answers[q.id];
+            const ansLen = typeof ansText === 'string' ? ansText.trim().length : (ansText ? 1 : 0);
+
+            combinedTelemetry[q.id] = {
+                questionId: q.id,
+                timeSpentSeconds: timeObj.timeSpentSeconds || 0,
+                pasteCount: telObj.pasteCount || 0,
+                pastedChars: telObj.pastedChars || 0,
+                keystrokeCount: telObj.keystrokeCount || 0,
+                answerLength: ansLen
+            };
+        });
+
         const payload = {
             studentId: studentInfo.studentId,
             answers: answers,
@@ -982,6 +1031,9 @@
                 totalExamTimeSeconds: timeSpent,
                 averageTimePerQuestionSeconds: avgTime,
                 perQuestion: questionResponseTimes
+            },
+            telemetry: {
+                perQuestion: combinedTelemetry
             }
         };
 
@@ -1060,7 +1112,8 @@
                 markedForReview,
                 visited,
                 timeRemainingSeconds,
-                questionResponseTimes
+                questionResponseTimes,
+                questionTelemetry
             };
             sessionStorage.setItem(cacheKey, JSON.stringify(state));
         } catch (e) {
@@ -1210,8 +1263,30 @@
         if (elements.clearBtn) elements.clearBtn.addEventListener('click', clearCurrentResponse);
         if (elements.markReviewBtn) elements.markReviewBtn.addEventListener('click', toggleMarkForReview);
 
-        // Written Answer Textarea Input (SCRUM-9)
+        // Written Answer Textarea Input (SCRUM-9 & SCRUM-13)
         if (elements.writtenAnswerInput) {
+            elements.writtenAnswerInput.addEventListener('paste', (e) => {
+                const q = questions[currentIndex];
+                if (!q || !isWrittenQuestion(q)) return;
+                let pastedData = '';
+                try {
+                    if (e.clipboardData && typeof e.clipboardData.getData === 'function') {
+                        pastedData = e.clipboardData.getData('text') || '';
+                    } else if (window.clipboardData && typeof window.clipboardData.getData === 'function') {
+                        pastedData = window.clipboardData.getData('text') || '';
+                    }
+                } catch (err) {}
+                recordPasteEvent(q.id, pastedData.length || (elements.writtenAnswerInput.value ? elements.writtenAnswerInput.value.length : 1));
+            });
+
+            elements.writtenAnswerInput.addEventListener('keydown', (e) => {
+                const q = questions[currentIndex];
+                if (!q || !isWrittenQuestion(q)) return;
+                if (!['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) {
+                    recordKeystroke(q.id);
+                }
+            });
+
             elements.writtenAnswerInput.addEventListener('input', (e) => {
                 const q = questions[currentIndex];
                 if (!q || !isWrittenQuestion(q)) return;
