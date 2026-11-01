@@ -446,17 +446,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         ${q.oralVerification ? `
                             <div class="oral-verification-review-card" style="margin-top: 10px; background: rgba(237, 255, 102, 0.04); border: 1px solid rgba(237, 255, 102, 0.25); border-radius: 8px; padding: 12px 14px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
                                     <span style="font-size: 11px; font-weight: 800; color: #edff66; text-transform: uppercase; letter-spacing: 0.5px;">
-                                        <i class="fa-solid fa-microphone-lines"></i> Adaptive Oral Verification (SCRUM-15)
+                                        <i class="fa-solid fa-microphone-lines"></i> Adaptive Oral Verification (SCRUM-16)
                                     </span>
-                                    <span class="oral-status-tag" style="font-size: 11px; color: #38bdf8; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); padding: 2px 8px; border-radius: 4px;">
-                                        <i class="fa-regular fa-clock"></i> ${q.oralVerification.timeElapsedSeconds || q.oralVerification.durationSeconds || 35}s spoken response (${q.oralVerification.timedOut ? 'Auto-closed at timeout' : 'Completed'})
+                                    <span class="oral-status-tag" style="font-size: 11px; color: ${q.oralVerification.microphoneStatus === 'denied' || (q.oralVerification.status && q.oralVerification.status.includes('Unverifiable')) ? '#fbbf24' : '#38bdf8'}; background: ${q.oralVerification.microphoneStatus === 'denied' || (q.oralVerification.status && q.oralVerification.status.includes('Unverifiable')) ? 'rgba(251, 191, 36, 0.12)' : 'rgba(56, 189, 248, 0.1)'}; border: 1px solid ${q.oralVerification.microphoneStatus === 'denied' || (q.oralVerification.status && q.oralVerification.status.includes('Unverifiable')) ? 'rgba(251, 191, 36, 0.35)' : 'rgba(56, 189, 248, 0.25)'}; padding: 2px 8px; border-radius: 4px;">
+                                        <i class="fa-regular fa-clock"></i> ${q.oralVerification.timeElapsedSeconds || q.oralVerification.durationSeconds || 35}s spoken response (${q.oralVerification.status || 'Completed'})
                                     </span>
                                 </div>
-                                <div class="oral-review-prompt" style="font-size: 13px; font-weight: 600; color: #ffffff; line-height: 1.5;">
+                                <div class="oral-review-prompt" style="font-size: 13px; font-weight: 600; color: #ffffff; line-height: 1.5; margin-bottom: 10px;">
+                                    <span style="color: #a1a1aa; font-weight: 500; font-size: 11px; display: block; margin-bottom: 2px;">Spontaneous Oral Follow-Up Prompt:</span>
                                     "${escapeHtml(q.oralVerification.questionPrompt)}"
                                 </div>
+
+                                ${q.oralVerification.microphoneStatus === 'denied' || (q.oralVerification.status && q.oralVerification.status.includes('Unverifiable')) ? `
+                                    <div class="oral-unverifiable-warning" style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #fbbf24; display: flex; align-items: center; gap: 8px;">
+                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                        <span><strong>Unverifiable Case (FR 3.3.3):</strong> Student microphone was unavailable or permission denied. Spoken audio could not be captured. Flagged for manual interview.</span>
+                                    </div>
+                                ` : `
+                                    ${q.oralVerification.audioDataUrl || q.oralVerification.audioUrl ? `
+                                        <div class="oral-audio-player-wrap" style="margin-top: 10px; margin-bottom: 10px; background: rgba(0, 0, 0, 0.35); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.2);">
+                                            <div style="font-size: 11px; font-weight: 700; color: #38bdf8; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                                                <i class="fa-solid fa-headphones"></i> Recorded Student Voice Audio:
+                                            </div>
+                                            <audio controls preload="metadata" class="oral-audio-player" src="${q.oralVerification.audioDataUrl || q.oralVerification.audioUrl}" style="width: 100%; height: 36px; border-radius: 6px; outline: none;"></audio>
+                                        </div>
+                                    ` : ''}
+
+                                    ${q.oralVerification.transcript ? `
+                                        <div class="oral-transcript-box" style="margin-top: 8px; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 10px 12px;">
+                                            <div style="font-size: 11px; font-weight: 700; color: #10b981; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                                <i class="fa-solid fa-file-waveform"></i> Speech-to-Text Transcript (Whisper STT):
+                                            </div>
+                                            <div class="oral-transcript-text" style="font-size: 12.5px; color: #f4f4f5; font-style: italic; line-height: 1.4;">
+                                                "${escapeHtml(q.oralVerification.transcript)}"
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                `}
                             </div>
                         ` : ''}
 

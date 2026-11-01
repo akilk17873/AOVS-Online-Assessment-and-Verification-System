@@ -578,11 +578,11 @@
                     </div>
                 </div>
 
-                <!-- Listening Audio Indicator -->
+                <!-- Microphone Audio Capture Status (SCRUM-16 & FR-3.3) -->
                 <div class="oral-mic-status-card" id="oralMicStatus">
-                    <div class="mic-wave-wrap">
-                        <span class="mic-pulse-dot"></span>
-                        <div class="audio-wave-bars">
+                    <div class="mic-wave-wrap" id="oralMicWaveWrap">
+                        <span class="mic-pulse-dot" id="oralMicPulseDot"></span>
+                        <div class="audio-wave-bars" id="oralAudioWaveBars">
                             <span class="bar bar1"></span>
                             <span class="bar bar2"></span>
                             <span class="bar bar3"></span>
@@ -590,10 +590,30 @@
                         </div>
                     </div>
                     <div class="mic-status-copy">
-                        <strong id="oralMicStatusHeading">Microphone Active &bull; Listening</strong>
-                        <p class="oral-instruction-text">
-                            Speak your answer clearly into your microphone. The window will automatically close when time expires.
+                        <strong id="oralMicStatusHeading">Requesting Microphone Access &bull; Listening</strong>
+                        <p class="oral-instruction-text" id="oralMicInstructionText">
+                            Speak your answer clearly into your microphone. Your spoken response is actively recorded and transcribed.
                         </p>
+                    </div>
+                </div>
+
+                <!-- Microphone Permission Denied / Unavailable Alert (AC #3 & FR-3.3.3) -->
+                <div class="oral-permission-denied-box hidden" id="oralPermissionDeniedBox">
+                    <div class="denied-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="denied-text">
+                        <strong>Microphone Access Unavailable / Denied (FR 3.3.3)</strong>
+                        <p>Voice recording could not be started. This question will be marked as "Unverifiable" for manual review. Your exam submission is not blocked.</p>
+                    </div>
+                </div>
+
+                <!-- Live Speech-to-Text Transcription Preview (FR-3.4) -->
+                <div class="oral-live-transcript-card" id="oralLiveTranscriptCard">
+                    <div class="transcript-header">
+                        <span class="transcript-title"><i class="fa-solid fa-file-waveform"></i> Live Spoken Response Transcription:</span>
+                        <span class="transcript-badge" id="oralTranscriptStatusBadge">Recording Audio...</span>
+                    </div>
+                    <div class="transcript-content" id="oralLiveTranscriptText">
+                        Listening for spoken explanation... Speak clearly into your microphone.
                     </div>
                 </div>
 

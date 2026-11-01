@@ -6,7 +6,14 @@ module.exports = defineConfig({
     use: {
         browserName: 'chromium',
         headless: true,
-        baseURL: 'http://localhost:3000'
+        baseURL: 'http://localhost:3000',
+        permissions: ['microphone'],
+        launchOptions: {
+            args: [
+                '--use-fake-ui-for-media-stream',
+                '--use-fake-device-for-media-stream'
+            ]
+        }
     },
 
     expect: {
