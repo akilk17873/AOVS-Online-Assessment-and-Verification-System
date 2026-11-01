@@ -6,6 +6,26 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('SCRUM-9: Display Exam Questions & Written-Answer Support', () => {
 
+    test.beforeAll(async () => {
+        try {
+            const { getDatabase } = await import('../db.js');
+            const db = await getDatabase();
+            if (db) {
+                await db.collection('answers').deleteMany({});
+            }
+        } catch (e) {}
+    });
+
+    test.afterAll(async () => {
+        try {
+            const { getDatabase } = await import('../db.js');
+            const db = await getDatabase();
+            if (db) {
+                await db.collection('answers').deleteMany({});
+            }
+        } catch (e) {}
+    });
+
     test.beforeEach(async ({ page }) => {
         // Clear any previous sessionStorage before test
         await page.goto('http://127.0.0.1:3000/Exam/index.html');

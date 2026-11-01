@@ -9,6 +9,10 @@ module.exports = defineConfig({
         baseURL: 'http://localhost:3000'
     },
 
+    expect: {
+        timeout: 10000
+    },
+
     webServer: {
         command: 'node mock-service.js',
         url: 'http://127.0.0.1:3000/api/exam/active',

@@ -444,6 +444,22 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="answer-text">${escapeHtml(q.studentAnswer)}</div>
                         </div>
 
+                        ${q.oralVerification ? `
+                            <div class="oral-verification-review-card" style="margin-top: 10px; background: rgba(237, 255, 102, 0.04); border: 1px solid rgba(237, 255, 102, 0.25); border-radius: 8px; padding: 12px 14px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+                                    <span style="font-size: 11px; font-weight: 800; color: #edff66; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        <i class="fa-solid fa-microphone-lines"></i> Adaptive Oral Verification (SCRUM-15)
+                                    </span>
+                                    <span class="oral-status-tag" style="font-size: 11px; color: #38bdf8; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25); padding: 2px 8px; border-radius: 4px;">
+                                        <i class="fa-regular fa-clock"></i> ${q.oralVerification.timeElapsedSeconds || q.oralVerification.durationSeconds || 35}s spoken response (${q.oralVerification.timedOut ? 'Auto-closed at timeout' : 'Completed'})
+                                    </span>
+                                </div>
+                                <div class="oral-review-prompt" style="font-size: 13px; font-weight: 600; color: #ffffff; line-height: 1.5;">
+                                    "${escapeHtml(q.oralVerification.questionPrompt)}"
+                                </div>
+                            </div>
+                        ` : ''}
+
                         ${q.sampleAnswer ? `
                             <div style="background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #a1a1aa;">
                                 <strong style="color: #38bdf8;"><i class="fa-solid fa-key"></i> Key Concepts &amp; Rubric:</strong>

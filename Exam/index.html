@@ -538,6 +538,81 @@
         </div>
     </div>
 
+    
+    <!-- ============================================================ -->
+    <!-- SCRUM-15: Adaptive Oral Verification Follow-Up Dialog Modal  -->
+    <!-- Features: Prominent question prompt, visible countdown timer -->
+    <!-- (30-45s), listening status indicator, and auto-close at 0s   -->
+    <!-- ============================================================ -->
+    <div class="modal-backdrop hidden" id="oralVerificationModal" role="dialog" aria-modal="true" aria-labelledby="oralModalTitle">
+        <div class="modal-card oral-modal">
+            <!-- Modal Header -->
+            <div class="modal-header oral-modal-header">
+                <div class="modal-title-group">
+                    <div class="oral-badge-row">
+                        <span class="oral-system-tag"><i class="fa-solid fa-microphone-lines"></i> AOVS Socratic Verification</span>
+                        <span class="oral-context-pill" id="oralContextBadge">Follow-up for Question 1</span>
+                    </div>
+                    <h3 class="modal-title oral-modal-title" id="oralModalTitle">Spoken Oral Follow-Up Question</h3>
+                </div>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body oral-modal-body">
+                <!-- Question Displayed Clearly (AC #1) -->
+                <div class="oral-question-box" id="oralQuestionBox">
+                    <span class="oral-box-label"><i class="fa-solid fa-quote-left"></i> Oral Verification Question:</span>
+                    <p class="oral-question-prompt" id="oralQuestionText">
+                        Loading oral follow-up question...
+                    </p>
+                </div>
+
+                <!-- Visible Countdown Timer (AC #2) -->
+                <div class="oral-timer-container" id="oralTimerContainer">
+                    <div class="oral-timer-header">
+                        <span class="oral-timer-title"><i class="fa-regular fa-clock"></i> Time Remaining to Respond</span>
+                        <span class="oral-timer-seconds font-mono" id="oralTimeDisplay">00:35</span>
+                    </div>
+                    <div class="oral-progress-track">
+                        <div class="oral-progress-bar" id="oralTimerProgressBar" style="width: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- Listening Audio Indicator -->
+                <div class="oral-mic-status-card" id="oralMicStatus">
+                    <div class="mic-wave-wrap">
+                        <span class="mic-pulse-dot"></span>
+                        <div class="audio-wave-bars">
+                            <span class="bar bar1"></span>
+                            <span class="bar bar2"></span>
+                            <span class="bar bar3"></span>
+                            <span class="bar bar4"></span>
+                        </div>
+                    </div>
+                    <div class="mic-status-copy">
+                        <strong id="oralMicStatusHeading">Microphone Active &bull; Listening</strong>
+                        <p class="oral-instruction-text">
+                            Speak your answer clearly into your microphone. The window will automatically close when time expires.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Auto-Close Banner Notice (AC #3) -->
+                <div class="oral-autoclose-notice" id="oralAutoCloseNotice">
+                    <i class="fa-solid fa-hourglass-end"></i>
+                    <span><strong>Auto-Close Enforced:</strong> This verification window will automatically submit and close in <strong id="oralNoticeSeconds">35</strong> seconds.</span>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer oral-modal-footer">
+                <button type="button" class="btn btn-secondary btn-oral-finish" id="finishOralSpeakingBtn">
+                    <i class="fa-solid fa-check"></i> I'm Finished Speaking
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main JavaScript Logic -->
     <script src="exam.js"></script>
 </body>

@@ -11,6 +11,14 @@ test.describe('SCRUM-10: Submit Written Answer API & UI', () => {
         }
     });
 
+    test.afterAll(async () => {
+        // Clean up answers collection after tests so other suites start clean
+        const db = await getDatabase();
+        if (db) {
+            await db.collection('answers').deleteMany({});
+        }
+    });
+
     test('1. API rejects unauthenticated submission (missing studentId)', async ({ request }) => {
         const response = await request.post('/api/exam/answers', {
             data: {

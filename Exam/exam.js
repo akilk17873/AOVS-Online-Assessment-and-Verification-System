@@ -28,6 +28,14 @@
     let questionTelemetry = {};     // SCRUM-13: Telemetry Signals State (pasteCount, pastedChars, keystrokes)
     let activeQuestionStartTime = null;
 
+    // SCRUM-15: Adaptive Oral Verification Follow-Up State
+    let oralVerifications = {};     // { [qId]: { id, questionPrompt, durationSeconds, timeElapsedSeconds, timedOut, completedAt } }
+    let activeOralTimer = null;
+    let oralTimeRemaining = 35;
+    let oralDurationTotal = 35;
+    let oralTargetQuestionId = null;
+    let onOralCloseCallback = null;
+
     // DOM Elements Cache
     const elements = {
         // States
@@ -128,6 +136,19 @@
         receiptTotalTimeSpent: document.getElementById('receiptTotalTimeSpent'),
         receiptAvgResponseTime: document.getElementById('receiptAvgResponseTime'),
         receiptTimestamp: document.getElementById('receiptTimestamp'),
+
+        // SCRUM-15: Oral Verification Modal Elements
+        oralVerificationModal: document.getElementById('oralVerificationModal'),
+        oralModalTitle: document.getElementById('oralModalTitle'),
+        oralContextBadge: document.getElementById('oralContextBadge'),
+        oralQuestionBox: document.getElementById('oralQuestionBox'),
+        oralQuestionText: document.getElementById('oralQuestionText'),
+        oralTimerContainer: document.getElementById('oralTimerContainer'),
+        oralTimeDisplay: document.getElementById('oralTimeDisplay'),
+        oralTimerProgressBar: document.getElementById('oralTimerProgressBar'),
+        oralNoticeSeconds: document.getElementById('oralNoticeSeconds'),
+        finishOralSpeakingBtn: document.getElementById('finishOralSpeakingBtn'),
+        oralMicStatusHeading: document.getElementById('oralMicStatusHeading'),
 
         retryLoadBtn: document.getElementById('retryLoadBtn'),
         refreshEmptyBtn: document.getElementById('refreshEmptyBtn')
@@ -858,7 +879,235 @@
     /**
      * Navigate to next question or open submit modal if on last question
      */
+
+    /**
+     * ============================================================
+     * SCRUM-15: Display Oral Question with Timer (SRS FR-3.2)
+     * Acceptance Criteria:
+     * 1. Question displayed clearly on screen.
+     * 2. Countdown timer visible (30–45s).
+     * 3. Window auto-closes at timeout.
+     * ============================================================
+     */
+
+    /**
+     * Trigger and display the spontaneous oral verification follow-up question
+     * @param {string} questionId
+     * @param {number|null} customDuration Custom duration in seconds (30-45s)
+     * @param {Function|null} callback Optional callback when window closes
+     */
+    async function triggerOralVerification(questionId, customDuration = null, callback = null) {
+        if (!elements.oralVerificationModal) return;
+
+        oralTargetQuestionId = questionId || (questions[currentIndex] ? questions[currentIndex].id : 'q-1');
+        onOralCloseCallback = callback;
+
+        const q = questions.find(item => item.id === oralTargetQuestionId) || questions[currentIndex] || {};
+        const qNum = q.questionNumber || (currentIndex + 1);
+        const writtenAnswer = answers[oralTargetQuestionId] || (elements.writtenAnswerInput ? elements.writtenAnswerInput.value : '');
+
+        if (elements.oralContextBadge) {
+            elements.oralContextBadge.textContent = `Socratic Verification • Question ${qNum}`;
+        }
+
+        // Show modal immediately with loading state so screen is responsive
+        if (elements.oralQuestionText) {
+            elements.oralQuestionText.textContent = "Synthesizing oral verification follow-up question...";
+        }
+
+        elements.oralVerificationModal.classList.remove('hidden');
+
+        // Determine countdown duration: 30 to 45 seconds (SRS FR 3.2.2 & SCRUM-15)
+        let duration = typeof customDuration === 'number'
+            ? Math.max(1, Math.round(customDuration)) // allow fast values in tests
+            : 35;
+
+        let questionPrompt = "";
+
+        try {
+            const res = await fetch(`${getApiBaseUrl()}/api/oral-question/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    questionId: oralTargetQuestionId,
+                    studentAnswer: writtenAnswer,
+                    questionTitle: q.title || '',
+                    questionNumber: qNum,
+                    customDuration: duration
+                })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.oralQuestion && data.oralQuestion.questionPrompt) {
+                    questionPrompt = data.oralQuestion.questionPrompt;
+                    if (typeof data.oralQuestion.durationSeconds === 'number' && !customDuration) {
+                        duration = data.oralQuestion.durationSeconds;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn("Oral question generator API error, using dynamic fallback:", e);
+        }
+
+        if (!questionPrompt) {
+            if (writtenAnswer && writtenAnswer.toLowerCase().includes('hash')) {
+                questionPrompt = "In your response, you described collision resolution. Briefly explain aloud what occurs if all keys hash into the exact same bucket, and how you would restore O(1) performance.";
+            } else if (writtenAnswer && writtenAnswer.toLowerCase().includes('quick')) {
+                questionPrompt = "You discussed QuickSort partitioning. Explain verbally why choosing a deterministic extreme pivot leads to quadratic time, and how median-of-three mitigates it.";
+            } else {
+                questionPrompt = `Based on your written explanation for Question ${qNum}, briefly explain aloud the key algorithmic trade-off and edge-case limitations of your approach.`;
+            }
+        }
+
+        // AC #1: Question displayed clearly on screen
+        if (elements.oralQuestionText) {
+            elements.oralQuestionText.textContent = questionPrompt;
+        }
+
+        // AC #2: Countdown timer visible (30-45s) and start auto-close tick
+        startOralCountdownTimer(duration, oralTargetQuestionId, questionPrompt);
+    }
+
+    /**
+     * Start the countdown timer and handle auto-close at 0s
+     */
+    function startOralCountdownTimer(durationSeconds, qId, prompt) {
+        if (activeOralTimer) {
+            clearInterval(activeOralTimer);
+            activeOralTimer = null;
+        }
+
+        oralDurationTotal = durationSeconds;
+        oralTimeRemaining = durationSeconds;
+
+        updateOralTimerUI(oralTimeRemaining, oralDurationTotal);
+
+        if (elements.oralNoticeSeconds) {
+            elements.oralNoticeSeconds.textContent = oralTimeRemaining;
+        }
+        if (elements.oralMicStatusHeading) {
+            elements.oralMicStatusHeading.textContent = "Microphone Active • Listening";
+        }
+
+        activeOralTimer = setInterval(() => {
+            oralTimeRemaining -= 1;
+            updateOralTimerUI(oralTimeRemaining, oralDurationTotal);
+
+            if (elements.oralNoticeSeconds) {
+                elements.oralNoticeSeconds.textContent = Math.max(0, oralTimeRemaining);
+            }
+
+            // AC #3: Window auto-closes at timeout
+            if (oralTimeRemaining <= 0) {
+                clearInterval(activeOralTimer);
+                activeOralTimer = null;
+
+                if (elements.oralMicStatusHeading) {
+                    elements.oralMicStatusHeading.textContent = "Time Expired • Auto-Closing...";
+                }
+
+                setTimeout(() => {
+                    closeOralVerificationModal(true); // timedOut = true
+                }, 300);
+            }
+        }, 1000);
+    }
+
+    /**
+     * Update visible countdown timer display and progress bar (AC #2)
+     */
+    function updateOralTimerUI(remainingSec, totalSec) {
+        if (!elements.oralTimeDisplay) return;
+
+        const safeRemaining = Math.max(0, remainingSec);
+        const mins = Math.floor(safeRemaining / 60);
+        const secs = safeRemaining % 60;
+        elements.oralTimeDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+        // Color coding
+        elements.oralTimeDisplay.classList.remove('warning', 'critical');
+        if (safeRemaining <= 5) {
+            elements.oralTimeDisplay.classList.add('critical');
+        } else if (safeRemaining <= 15) {
+            elements.oralTimeDisplay.classList.add('warning');
+        }
+
+        // Progress bar width
+        if (elements.oralTimerProgressBar && totalSec > 0) {
+            const pct = Math.max(0, Math.min(100, (safeRemaining / totalSec) * 100));
+            elements.oralTimerProgressBar.style.width = `${pct}%`;
+            elements.oralTimerProgressBar.classList.remove('warning', 'critical');
+            if (safeRemaining <= 5) {
+                elements.oralTimerProgressBar.classList.add('critical');
+            } else if (safeRemaining <= 15) {
+                elements.oralTimerProgressBar.classList.add('warning');
+            }
+        }
+    }
+
+    /**
+     * Close oral verification modal (handles auto-close at timeout & early finish)
+     */
+    function closeOralVerificationModal(timedOut = false) {
+        if (activeOralTimer) {
+            clearInterval(activeOralTimer);
+            activeOralTimer = null;
+        }
+
+        const elapsed = Math.max(1, oralDurationTotal - Math.max(0, oralTimeRemaining));
+        const promptText = elements.oralQuestionText ? elements.oralQuestionText.textContent : '';
+
+        if (oralTargetQuestionId) {
+            oralVerifications[oralTargetQuestionId] = {
+                id: `ORAL-${oralTargetQuestionId}-${Date.now().toString(36).slice(-4).toUpperCase()}`,
+                forQuestionId: oralTargetQuestionId,
+                questionPrompt: promptText,
+                durationSeconds: oralDurationTotal,
+                timeElapsedSeconds: elapsed,
+                timedOut: timedOut,
+                status: timedOut ? 'Completed (Auto-closed at timeout)' : 'Completed (Finished early by student)',
+                completedAt: new Date().toISOString()
+            };
+            persistCurrentState();
+        }
+
+        if (elements.oralVerificationModal) {
+            elements.oralVerificationModal.classList.add('hidden');
+        }
+
+        const cb = onOralCloseCallback;
+        onOralCloseCallback = null;
+        if (typeof cb === 'function') {
+            cb();
+        }
+    }
+
     function goToNextQuestion() {
+        saveActiveWrittenAnswer();
+        const currentQ = questions[currentIndex];
+
+        // Check if current question has suspicious telemetry triggering oral verification
+        if (currentQ && isWrittenQuestion(currentQ)) {
+            const qTel = questionTelemetry[currentQ.id] || {};
+            const ansText = answers[currentQ.id] || '';
+            const qTime = (questionResponseTimes[currentQ.id] && questionResponseTimes[currentQ.id].timeSpentSeconds) || 1;
+
+            const isSuspicious = (qTel.pasteCount > 0 && qTel.pastedChars > 40) ||
+                                 (ansText.length > 80 && (ansText.length / qTime) > 10);
+
+            if (isSuspicious && !oralVerifications[currentQ.id]) {
+                triggerOralVerification(currentQ.id, 35, () => {
+                    proceedToNextQuestion();
+                });
+                return;
+            }
+        }
+
+        proceedToNextQuestion();
+    }
+
+    function proceedToNextQuestion() {
         if (currentIndex < questions.length - 1) {
             goToQuestion(currentIndex + 1);
         } else {
@@ -1205,7 +1454,8 @@
                 visited,
                 timeRemainingSeconds,
                 questionResponseTimes,
-                questionTelemetry
+                questionTelemetry,
+                oralVerifications
             };
             sessionStorage.setItem(cacheKey, JSON.stringify(state));
         } catch (e) {
@@ -1230,6 +1480,9 @@
                 }
                 if (parsed.questionResponseTimes && typeof parsed.questionResponseTimes === 'object') {
                     questionResponseTimes = parsed.questionResponseTimes;
+                }
+                if (parsed.oralVerifications && typeof parsed.oralVerifications === 'object') {
+                    oralVerifications = parsed.oralVerifications;
                 }
             }
         } catch (e) {
@@ -1354,6 +1607,7 @@
         if (elements.nextBtn) elements.nextBtn.addEventListener('click', goToNextQuestion);
         if (elements.clearBtn) elements.clearBtn.addEventListener('click', clearCurrentResponse);
         if (elements.markReviewBtn) elements.markReviewBtn.addEventListener('click', toggleMarkForReview);
+        if (elements.finishOralSpeakingBtn) elements.finishOralSpeakingBtn.addEventListener('click', () => closeOralVerificationModal(false));
 
         // Written Answer Textarea Input (SCRUM-9 & SCRUM-13)
         if (elements.submitAnswerBtn) {
@@ -1493,8 +1747,14 @@
         }
     }
 
+    // SCRUM-15: Expose Oral Verification globally for testing & external triggers
+    window.triggerOralVerification = triggerOralVerification;
+    window.closeOralVerificationModal = closeOralVerificationModal;
+
     // Expose controller for testing and external access
     window.AOVSExamController = {
+        triggerOralVerification,
+        closeOralVerificationModal,
         fetchExamData,
         goToQuestion,
         goToNextQuestion,
