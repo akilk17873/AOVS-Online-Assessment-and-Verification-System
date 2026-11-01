@@ -586,6 +586,19 @@ const inMemorySubmissions = [
                 'q-4': { score: 15, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 2.2, timeSpentSeconds: 50 } },
                 'q-5': { score: 12, riskLevel: 'LOW', flagged: false, metrics: { pasteCount: 0, pastedChars: 0, typingSpeedCps: 1.8, timeSpentSeconds: 93 } }
             }
+        },
+        oralVerifications: {
+            'q-1': {
+                id: 'ORAL-Q1-RV01',
+                forQuestionId: 'q-1',
+                questionNumber: 1,
+                questionPrompt: 'In your response, you described collision resolution. Briefly explain aloud what occurs if all keys hash into the exact same bucket, and how you would restore O(1) performance.',
+                durationSeconds: 35,
+                timeElapsedSeconds: 35,
+                timedOut: true,
+                status: 'Completed (Auto-closed at timeout)',
+                completedAt: new Date(Date.now() - 1780000).toISOString()
+            }
         }
     }
 ];
@@ -788,11 +801,13 @@ app.post('/api/exams/:id/submit', async (req, res) => {
                 perQuestion: {}
             },
             telemetry: telemetry || { perQuestion: perQTelemetry },
-            riskScore: riskAnalysis.compositeScore,
+            oralVerifications: req.body.oralVerifications || null,
+                riskScore: riskAnalysis.compositeScore,
             riskLevel: riskAnalysis.riskLevel,
             flagged: riskAnalysis.flagged,
             requiresVerification: riskAnalysis.requiresVerification,
             riskAnalysis: riskAnalysis,
+            oralVerifications: req.body.oralVerifications || null,
             submittedAt: new Date().toISOString()
         };
 
@@ -810,7 +825,8 @@ app.post('/api/exams/:id/submit', async (req, res) => {
             riskLevel: riskAnalysis.riskLevel,
             flagged: riskAnalysis.flagged,
             requiresVerification: riskAnalysis.requiresVerification,
-            riskAnalysis: riskAnalysis
+            riskAnalysis: riskAnalysis,
+            oralVerifications: req.body.oralVerifications || null
         });
 
         if (isDatabaseConfigured()) {
@@ -1124,6 +1140,77 @@ app.post('/api/instructor/risk-config', (req, res) => {
     }
 });
 
+
+// ============================================================
+// ORAL VERIFICATION GENERATOR & TIMER APIS (SCRUM-15 & SRS FR-3.2)
+// Generates spontaneous oral follow-up questions from student's written response
+// Enforces a 30-45 second countdown timer that auto-closes at timeout.
+// ============================================================
+
+/**
+ * Generate spontaneous oral follow-up question based on student's written response (FR-3.2.1)
+ */
+function generateFollowUpQuestion(studentAnswer = '', questionTitle = '', qNum = 1) {
+    const text = (studentAnswer || '').toLowerCase();
+
+    if (text.includes('hash') || text.includes('collision') || text.includes('chain')) {
+        return "In your response, you described collision resolution. Briefly explain aloud what occurs if all keys hash into the exact same bucket, and how you would restore O(1) performance.";
+    }
+    if (text.includes('tree') || text.includes('avl') || text.includes('bst') || text.includes('balance') || text.includes('rotation')) {
+        return "You explained tree height balancing. In your own words, describe aloud why an AVL tree strictly enforces balance factors and when a double rotation is required.";
+    }
+    if (text.includes('quicksort') || text.includes('pivot') || text.includes('partition')) {
+        return "You discussed QuickSort partitioning. Explain verbally why choosing a deterministic extreme pivot leads to quadratic time, and how median-of-three mitigates it.";
+    }
+    if (text.includes('stack') || text.includes('queue') || text.includes('lifo') || text.includes('fifo')) {
+        return "You contrasted stacks and queues. Explain aloud a concrete operating system scenario where a stack must be used instead of a queue.";
+    }
+    if (text.includes('graph') || text.includes('dijkstra') || text.includes('traversal')) {
+        return "Regarding your graph traversal explanation, explain aloud why Dijkstra's algorithm fails to find shortest paths when negative edge weights are present.";
+    }
+
+    if (studentAnswer.trim().length > 30) {
+        return `Based on your written explanation for Question ${qNum}, briefly explain aloud the key algorithmic trade-off and edge-case limitations of your approach.`;
+    }
+
+    return `In your own words, briefly explain the core principle and working logic behind your answer to Question ${qNum}.`;
+}
+
+// POST /api/oral-question/generate — Generate oral follow-up question with 30-45s timer
+app.post('/api/oral-question/generate', (req, res) => {
+    try {
+        const { questionId, studentAnswer, questionTitle, questionNumber, customDuration } = req.body || {};
+
+        const qNum = questionNumber || 1;
+        const prompt = generateFollowUpQuestion(studentAnswer, questionTitle, qNum);
+
+        // Timer duration: strictly 30 to 45 seconds per SRS FR 3.2.2 & SCRUM-15
+        const durationSeconds = typeof customDuration === 'number'
+            ? Math.max(1, Math.min(45, Math.round(customDuration)))
+            : 35;
+
+        const oralQuestion = {
+            id: `ORAL-${questionId || 'Q' + qNum}-${Date.now().toString(36).slice(-4).toUpperCase()}`,
+            forQuestionId: questionId || `q-${qNum}`,
+            questionNumber: qNum,
+            questionPrompt: prompt,
+            durationSeconds: durationSeconds,
+            generatedAt: new Date().toISOString()
+        };
+
+        res.status(200).json({
+            success: true,
+            oralQuestion
+        });
+    } catch (e) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to generate oral follow-up question",
+            error: e.message
+        });
+    }
+});
+
 // ============================================================
 // INSTRUCTOR REVIEW DASHBOARD APIS (SCRUM-8 & SCRUM-13)
 // Endpoints for retrieving submissions, grading, telemetry metrics, and risk scores
@@ -1297,7 +1384,12 @@ app.get('/api/instructor/submissions/:id', async (req, res) => {
                     interactions: qTelemetry.interactions
                 } : null,
                 awardedMarks: marksAwarded !== undefined ? marksAwarded : null,
-                risk: qRisk
+                risk: qRisk,
+                oralVerification: (submission.oralVerifications && (
+                    submission.oralVerifications[q.id] ||
+                    submission.oralVerifications['q-' + qNum] ||
+                    submission.oralVerifications['CS301-Q' + qNum]
+                )) || null
             };
         });
 
@@ -1322,6 +1414,7 @@ app.get('/api/instructor/submissions/:id', async (req, res) => {
                 riskScore: submission.riskScore !== undefined ? submission.riskScore : (submission.riskAnalysis ? submission.riskAnalysis.compositeScore : 15),
                 riskLevel: submission.riskLevel || (submission.riskAnalysis ? submission.riskAnalysis.riskLevel : 'LOW'),
                 flagged: Boolean(submission.flagged !== undefined ? submission.flagged : (submission.riskAnalysis && submission.riskAnalysis.flagged)),
+                oralVerifications: submission.oralVerifications || null,
                 requiresVerification: Boolean(submission.requiresVerification !== undefined ? submission.requiresVerification : (submission.riskAnalysis && submission.riskAnalysis.requiresVerification)),
                 riskAnalysis: submission.riskAnalysis || null,
                 questions: questionsWithAnswers

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Student Login UI', () => {
 
     test.beforeEach(async ({ page }) => {
-        await page.goto('http://127.0.0.1:5500/Student%20Login/Creating%20Login_UI/index.html');
+        await page.goto('/Student%20Login/Creating%20Login_UI/index.html');
     });
 
     // TC01 - Check whether all login UI elements are displayed
