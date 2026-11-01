@@ -98,14 +98,26 @@
                 </div>
             </div>
 
+            <!-- SCRUM-13: Flagged Suspicious Submissions Stat -->
+            <div class="stat-card">
+                <div class="stat-icon-wrap icon-red">
+                    <i class="fa-solid fa-shield-virus"></i>
+                </div>
+                <div class="stat-data">
+                    <span class="stat-label">Flagged For Review</span>
+                    <strong class="stat-value text-red" id="statFlaggedReviews">--</strong>
+                    <span class="stat-note">Risk score &gt; threshold</span>
+                </div>
+            </div>
+
             <div class="stat-card">
                 <div class="stat-icon-wrap icon-blue">
                     <i class="fa-solid fa-stopwatch"></i>
                 </div>
                 <div class="stat-data">
-                    <span class="stat-label">Avg Student Response Time</span>
+                    <span class="stat-label">Avg Response Time</span>
                     <strong class="stat-value text-blue" id="statAvgDuration">--</strong>
-                    <span class="stat-note">Telemetry aggregated per question</span>
+                    <span class="stat-note">Per question telemetry</span>
                 </div>
             </div>
         </section>
@@ -115,7 +127,7 @@
             <div class="section-toolbar">
                 <div class="toolbar-left">
                     <h2 class="section-heading">Student Assessments for Review</h2>
-                    <span class="section-subheading">Inspect submitted written answers, review per-question time telemetry, and assign evaluations.</span>
+                    <span class="section-subheading">Inspect submitted written answers, examine response time &amp; paste telemetry risk scores, and assign evaluations.</span>
                 </div>
 
                 <div class="toolbar-right">
@@ -131,6 +143,19 @@
                         <option value="Pending Review">Pending Review</option>
                         <option value="Reviewed">Reviewed / Graded</option>
                     </select>
+
+                    <!-- SCRUM-13: Risk Filter Dropdown -->
+                    <select id="filterRisk" class="filter-select" title="Filter by risk score and verification flag">
+                        <option value="all">All Risk Levels</option>
+                        <option value="flagged">Flagged (Verification Required)</option>
+                        <option value="low">Low Risk / Verified</option>
+                    </select>
+
+                    <!-- SCRUM-13: Configurable Threshold Trigger Button -->
+                    <button type="button" class="btn-config-threshold" id="openThresholdBtn" title="Configure Risk Score Threshold &amp; Weights">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span>Threshold: <strong id="currentThresholdBadge" style="color: #edff66;">65</strong></span>
+                    </button>
 
                     <!-- Refresh Button -->
                     <button type="button" id="refreshBtn" class="refresh-btn" title="Refresh Submissions">
@@ -152,12 +177,13 @@
                                 <th>Avg Response Time</th>
                                 <th>Status</th>
                                 <th>Score</th>
+                                <th>Risk Score (SCRUM-13)</th>
                                 <th style="text-align: right;">Action</th>
                             </tr>
                         </thead>
                         <tbody id="submissionsTableBody">
                             <tr>
-                                <td colspan="8" class="loading-cell">
+                                <td colspan="9" class="loading-cell">
                                     <i class="fa-solid fa-circle-notch fa-spin"></i> Loading student submissions...
                                 </td>
                             </tr>
@@ -180,6 +206,8 @@
                         <span id="modalExamTitle" class="meta-pill"><i class="fa-solid fa-book"></i> --</span>
                         <span id="modalTotalTime" class="meta-pill"><i class="fa-solid fa-stopwatch"></i> --</span>
                         <span id="modalStatusBadge" class="status-badge pending">Pending</span>
+                        <!-- SCRUM-13: Risk Badge in Modal Header -->
+                        <span id="modalRiskBadge" class="risk-badge low">Risk Score: --</span>
                     </div>
                 </div>
                 <button type="button" class="close-modal-btn" id="closeModalBtn" title="Close evaluation drawer">
@@ -188,7 +216,7 @@
             </div>
 
             <div class="modal-body" id="modalBody">
-                <!-- Question & Answer Evaluation Blocks Rendered Here -->
+                <!-- Risk Analysis Card & Question Blocks Rendered Dynamically -->
             </div>
 
             <div class="modal-footer">
@@ -201,6 +229,57 @@
                         <i class="fa-solid fa-check-double"></i> Save Evaluation &amp; Grade
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRUM-13: Risk Threshold Configuration Modal -->
+    <div class="modal-backdrop" id="thresholdModal" style="display: none; align-items: center; justify-content: center;">
+        <div class="config-modal-card">
+            <div class="config-modal-header">
+                <div class="config-title-group">
+                    <i class="fa-solid fa-sliders" style="color: #edff66; font-size: 18px;"></i>
+                    <h3 style="color: #ffffff; font-size: 18px; font-weight: 700;">Risk Score Threshold Configuration</h3>
+                </div>
+                <button type="button" class="close-modal-btn" id="closeThresholdModalBtn">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="config-modal-body">
+                <p style="font-size: 13px; color: #a1a1aa; line-height: 1.5; margin-bottom: 20px;">
+                    Adjust the sensitivity threshold for flagging suspicious responses. Answers combining rapid response time and paste events with a composite score equal to or above this threshold will be flagged for manual verification.
+                </p>
+
+                <div class="config-slider-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label for="thresholdInput" style="font-size: 13px; font-weight: 600; color: #ffffff;">
+                            Verification Trigger Threshold (1 - 100):
+                        </label>
+                        <span id="thresholdDisplayValue" style="font-size: 18px; font-weight: 800; color: #edff66;">65</span>
+                    </div>
+                    <input type="range" id="thresholdSlider" min="10" max="95" step="1" value="65" class="config-range">
+                </div>
+
+                <div class="config-weights-preview">
+                    <h4 style="font-size: 12px; font-weight: 700; color: #ffffff; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Mathematical Weighting Formula (SCRUM-13):
+                    </h4>
+                    <div style="font-family: monospace; font-size: 12px; color: #38bdf8; background: #09090c; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                        RiskScore = (0.55 &times; PasteSignal) + (0.45 &times; ResponseTimeSignal)
+                    </div>
+                    <div style="display: flex; gap: 12px; margin-top: 10px; font-size: 11px; color: #a1a1aa;">
+                        <span><strong style="color: #dfdff2;">&bull; Paste Weight:</strong> 55%</span>
+                        <span><strong style="color: #dfdff2;">&bull; Response Time Weight:</strong> 45%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="config-modal-footer">
+                <button type="button" class="btn-cancel" id="cancelThresholdBtn">Cancel</button>
+                <button type="button" class="btn-save-grade" id="saveThresholdBtn">
+                    <i class="fa-solid fa-check"></i> Apply &amp; Re-evaluate Submissions
+                </button>
             </div>
         </div>
     </div>
