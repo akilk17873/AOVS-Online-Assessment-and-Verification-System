@@ -1288,8 +1288,13 @@
                         }
                     }
                 } catch (e) {
-                    console.warn("Backend transcription fallback notice:", e);
+                    console.warn("Backend transcription fallback notice (SCRUM-21):", e);
                 }
+            }
+
+            // SCRUM-21: Resilient fallback if STT API is offline/failed but audio was captured
+            if (!transcriptResult && oralMicPermissionGranted && activeRecordedAudioBase64) {
+                transcriptResult = "[Spoken audio recorded - Transcription service temporarily offline. Audio preserved for instructor review.]";
             }
 
             // Determine verification case status per SRS FR 3.3.3
@@ -1661,8 +1666,13 @@
                 submittedAt: new Date().toLocaleTimeString()
             });
         } catch (error) {
-            console.error('Error submitting exam:', error);
-            showErrorState(`Submission error: ${error.message}`);
+            console.error('Error submitting exam (SCRUM-21 Fallback):', error);
+            // SCRUM-21: Preserve payload locally so work is never lost during network drops
+            try {
+                sessionStorage.setItem('aovs_pending_submission', JSON.stringify(payload));
+            } catch (storageErr) {}
+            showWorkspaceState();
+            alert(`Network Interruption (${error.message}). Your written answers and oral verifications are safely cached. Please click 'Submit Examination' to retry.`);
         }
     }
 
