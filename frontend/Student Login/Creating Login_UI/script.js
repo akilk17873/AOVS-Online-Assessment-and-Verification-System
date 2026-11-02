@@ -38,11 +38,17 @@ document.getElementById('loginForm').addEventListener('submit', function(event) 
     }
 
     function getApiBaseUrl() {
+        if (window.AOVS_API_BASE) return window.AOVS_API_BASE.replace(/\/$/, '');
+        const stored = localStorage.getItem('AOVS_API_BASE');
+        if (stored) return stored.replace(/\/$/, '');
         if (window.location.protocol === 'file:') {
             return 'http://localhost:3000';
         }
-        // In browser HTTP environment, use relative URL to match whatever port served this page
-        return '';
+        const port = window.location.port;
+        if (port === '3000' || port === '') {
+            return '';
+        }
+        return 'http://localhost:3000';
     }
 
     // Determine reliable exam page target

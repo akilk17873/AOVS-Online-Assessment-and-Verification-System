@@ -2214,3 +2214,70 @@ kbd {
     background: #edff66;
     color: #000000;
 }
+
+/* SCRUM-16: Audio Recording & Transcription Styles (FR-3.3 & FR-3.4) */
+.oral-permission-denied-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: #fca5a5;
+    font-size: 13px;
+    line-height: 1.4;
+    animation: fadeIn 0.25s ease-in-out;
+}
+
+.oral-permission-denied-box .denied-icon {
+    font-size: 18px;
+    color: #ef4444;
+    margin-top: 2px;
+}
+
+.oral-permission-denied-box p {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #f87171;
+}
+
+.oral-live-transcript-card {
+    background: #14151d;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 10px;
+    padding: 12px 16px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.oral-live-transcript-card .transcript-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.oral-live-transcript-card .transcript-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #10b981;
+}
+
+.oral-live-transcript-card .transcript-badge {
+    font-size: 11px;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.oral-live-transcript-card .transcript-content {
+    font-size: 13px;
+    color: #ffffff;
+    line-height: 1.5;
+    min-height: 38px;
+    font-style: italic;
+}

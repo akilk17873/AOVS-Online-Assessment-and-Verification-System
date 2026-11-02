@@ -1,11 +1,12 @@
 {
   "name": "aovs",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "AOVS - Assessment & Oral Verification System",
+  "main": "backend/server.js",
   "scripts": {
-    "start": "node mock-service.js",
-    "seed": "node scripts/seed-exams.js",
+    "start": "node backend/mock-service.js",
+    "start:backend": "node backend/server.js",
+    "seed": "node backend/scripts/seed-exams.js",
     "test": "playwright test"
   },
   "keywords": [],
