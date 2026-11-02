@@ -1295,6 +1295,51 @@ app.post('/api/oral-question/transcribe', (req, res) => {
     }
 });
 
+// ============================================================
+// ROLE-BASED ACCESS CONTROL (RBAC) MIDDLEWARE (SCRUM-20)
+// Prevents unauthorized student access to instructor review endpoints
+// ============================================================
+app.use('/api/instructor', (req, res, next) => {
+    if (req.path === '/login') return next();
+
+    const userRole = req.headers['x-user-role'];
+    if (userRole === 'student') {
+        return res.status(403).json({
+            success: false,
+            message: "Access forbidden (RBAC): Student accounts do not have permission to access instructor review resources.",
+            role: "student",
+            requiredRole: "instructor"
+        });
+    }
+
+    next();
+});
+
+// GET /api/auth/verify-role — Role permissions inspection (SCRUM-20)
+app.get('/api/auth/verify-role', (req, res) => {
+    const role = req.headers['x-user-role'] || req.query.role || 'guest';
+    if (role === 'student') {
+        return res.status(200).json({
+            success: true,
+            role: 'student',
+            permissions: ['read_active_exam', 'submit_exam_response', 'speak_oral_verification'],
+            forbiddenResources: ['/api/instructor/*', '/api/admin/*']
+        });
+    } else if (role === 'instructor' || role === 'admin') {
+        return res.status(200).json({
+            success: true,
+            role: role,
+            permissions: ['view_submissions', 'grade_submission', 'configure_risk_thresholds', 'inspect_telemetry'],
+            forbiddenResources: []
+        });
+    }
+
+    return res.status(401).json({
+        success: false,
+        message: "Unauthenticated: Missing valid role identity."
+    });
+});
+
 // GET /api/instructor/submissions — List all student submissions with telemetry summaries
 app.get('/api/instructor/submissions', async (req, res) => {
     try {
