@@ -39,10 +39,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Base API URL
     function getApiBaseUrl() {
+        if (window.AOVS_API_BASE) return window.AOVS_API_BASE.replace(/\/$/, '');
+        const stored = localStorage.getItem('AOVS_API_BASE');
+        if (stored) return stored.replace(/\/$/, '');
         if (window.location.protocol === 'file:') {
             return 'http://localhost:3000';
         }
-        return '';
+        const port = window.location.port;
+        if (port === '3000' || port === '') {
+            return '';
+        }
+        return 'http://localhost:3000';
     }
 
     // Clear error messages on input

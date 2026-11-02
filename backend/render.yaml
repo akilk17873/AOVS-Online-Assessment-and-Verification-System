@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: aovs-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: MOCK_COLLEGE_PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: TEST_STUDENT_ID
+        value: TEST001
+      - key: TEST_PASSWORD
+        value: Test@123
+      - key: TEST_INSTRUCTOR_ID
+        value: INST001
+      - key: TEST_INSTRUCTOR_PASSWORD
+        value: Instructor@123
+

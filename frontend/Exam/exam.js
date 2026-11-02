@@ -177,6 +177,9 @@
      * direct express hosting (port 3000) and live-server testing (port 5500)
      */
     function getApiBaseUrl() {
+        if (window.AOVS_API_BASE) return window.AOVS_API_BASE.replace(/\/$/, '');
+        const stored = localStorage.getItem('AOVS_API_BASE');
+        if (stored) return stored.replace(/\/$/, '');
         const port = window.location.port;
         if (port === '3000' || port === '') {
             return '';

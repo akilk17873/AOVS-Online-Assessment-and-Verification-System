@@ -1,0 +1,30 @@
+{
+  "name": "aovs-backend",
+  "version": "1.0.0",
+  "description": "AOVS (Assessment & Oral Verification System) - Backend Service",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "seed": "node scripts/seed-exams.js"
+  },
+  "keywords": [
+    "aovs",
+    "proctoring",
+    "assessment",
+    "whisper",
+    "oral-verification"
+  ],
+  "author": "AOVS Team",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "mongodb": "^6.8.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

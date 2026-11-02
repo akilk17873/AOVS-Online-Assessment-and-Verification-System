@@ -21,7 +21,7 @@ module.exports = defineConfig({
     },
 
     webServer: {
-        command: 'node mock-service.js',
+        command: 'node backend/mock-service.js',
         url: 'http://127.0.0.1:3000/api/exam/active',
         reuseExistingServer: !process.env.CI,
         timeout: 25000,

@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "cleanUrls": false,
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://aovs-backend.onrender.com/api/:match*"
+    }
+  ]
+}
+

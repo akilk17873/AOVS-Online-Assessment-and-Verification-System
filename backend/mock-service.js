@@ -6,15 +6,16 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const PORT = process.env.MOCK_COLLEGE_PORT || 3000;
+const fs = require('fs');
+const path = require('path');
+
+const PORT = process.env.PORT || process.env.MOCK_COLLEGE_PORT || 3000;
 const TEST_STUDENT_ID = process.env.TEST_STUDENT_ID || 'TEST001';
 const TEST_PASSWORD = process.env.TEST_PASSWORD || 'Test@123';
 const TEST_INSTRUCTOR_ID = process.env.TEST_INSTRUCTOR_ID || 'INST001';
 const TEST_INSTRUCTOR_PASSWORD = process.env.TEST_INSTRUCTOR_PASSWORD || 'Instructor@123';
 const TEST_ADMIN_ID = process.env.TEST_ADMIN_ID || 'admin';
 const TEST_ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || 'Admin@123';
-
-const path = require('path');
 
 // SCRUM-13: Risk Scoring Engine Integration
 const {
@@ -25,8 +26,23 @@ const {
     calculateExamRisk
 } = require('./risk-scorer');
 
-// Serve static repository files so frontend can be accessed directly
-app.use(express.static(path.join(__dirname, '.')));
+// Serve static frontend files when present (for local dev & test runner)
+const localFrontendPath = path.resolve(__dirname, '../frontend');
+if (fs.existsSync(localFrontendPath)) {
+    app.use(express.static(localFrontendPath));
+} else {
+    app.use(express.static(path.join(__dirname, '.')));
+}
+
+// Health check endpoint for Render / cloud hosting uptime monitors
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        service: 'AOVS Backend API (Assessment & Proctoring Engine)',
+        version: '1.0.0',
+        timestamp: new Date().toISOString()
+    });
+});
 
 // ============================================================
 // DATABASE INTEGRATION (SCRUM-31: MongoDB Atlas)
