@@ -51,12 +51,13 @@ const {
     getMongoClient,
     getDatabase,
     isDatabaseConfigured,
+    isDbAvailable,
     getExamFromDb,
     getAllExamsFromDb,
     maskMongoUri
 } = require('./db');
 
-if (isDatabaseConfigured()) {
+if (isDbAvailable()) {
     console.log(`[AOVS Database] MONGODB_URI detected: ${maskMongoUri(process.env.MONGODB_URI)}`);
     getMongoClient()
         .then(() => console.log('[AOVS Database] MongoDB Atlas connection verified successfully.'))
@@ -517,6 +518,22 @@ const inMemorySubmissions = [
         maxScore: 25,
         instructorFeedback: 'Outstanding analytical explanations and thorough complexity justifications.',
         submittedAt: new Date(Date.now() - 7200000).toISOString(),
+        oralVerifications: {
+            'q-1': {
+                id: 'ORAL-Q1-PS02',
+                forQuestionId: 'q-1',
+                questionNumber: 1,
+                questionPrompt: 'In your response, you described collision resolution. Briefly explain aloud what occurs if all keys hash into the exact same bucket.',
+                durationSeconds: 35,
+                timeElapsedSeconds: 4,
+                timedOut: false,
+                microphoneStatus: 'unavailable',
+                status: 'Unverifiable - Microphone unavailable',
+                failureReason: 'No microphone hardware device found on this system (NotFoundError)',
+                audioDataUrl: null,
+                transcript: '[No voice recorded - Microphone unavailable]'
+            }
+        },
         riskScore: 22,
         riskLevel: 'LOW',
         flagged: false,
@@ -670,7 +687,7 @@ app.get('/api/exam/active', async (req, res) => {
         const targetId = examId || (type === 'mcq' ? 'CS301-MCQ' : 'CS301-2026');
 
         // 1. If MongoDB Atlas is configured, retrieve from database
-        if (isDatabaseConfigured()) {
+        if (isDbAvailable()) {
             try {
                 const dbExam = await getExamFromDb(targetId);
                 if (dbExam) {
@@ -710,7 +727,7 @@ app.get('/api/exam/active', async (req, res) => {
 // GET /api/exams — List all available exams
 app.get('/api/exams', async (req, res) => {
     try {
-        if (isDatabaseConfigured()) {
+        if (isDbAvailable()) {
             try {
                 const list = await getAllExamsFromDb();
                 return res.status(200).json({ success: true, source: 'mongodb', exams: list });
@@ -737,7 +754,7 @@ app.get('/api/exams', async (req, res) => {
 app.get('/api/exams/:id', async (req, res) => {
     try {
         const examId = req.params.id;
-        if (isDatabaseConfigured()) {
+        if (isDbAvailable()) {
             try {
                 const dbExam = await getExamFromDb(examId);
                 if (dbExam) {
@@ -848,7 +865,7 @@ app.post('/api/exams/:id/submit', async (req, res) => {
             oralVerifications: req.body.oralVerifications || null
         });
 
-        if (isDatabaseConfigured()) {
+        if (isDbAvailable()) {
             try {
                 const db = await getDatabase();
                 if (db) {
@@ -920,7 +937,7 @@ app.post('/api/exam/answers', async (req, res) => {
             updatedAt: new Date().toISOString()
         };
 
-        if (isDatabaseConfigured()) {
+        if (isDbAvailable()) {
             try {
                 const db = await getDatabase();
                 if (db) {
@@ -964,7 +981,7 @@ app.get('/api/exam/:examId/answers', async (req, res) => {
 
         let answersList = [];
 
-        if (isDatabaseConfigured()) {
+        if (isDbAvailable()) {
             try {
                 const db = await getDatabase();
                 if (db) {
@@ -1283,7 +1300,7 @@ app.get('/api/instructor/submissions', async (req, res) => {
     try {
         let submissions = [...inMemorySubmissions];
 
-        if (isDatabaseConfigured()) {
+        if (isDbAvailable()) {
             try {
                 const db = await getDatabase();
                 if (db) {
@@ -1384,7 +1401,7 @@ app.get('/api/instructor/submissions/:id', async (req, res) => {
         // Retrieve master questions to display side-by-side with student answers
         const examId = submission.examId || 'CS301-2026';
         let exam = null;
-        if (isDatabaseConfigured()) {
+        if (isDbAvailable()) {
             try {
                 exam = await getExamFromDb(examId);
             } catch (e) {}
@@ -1510,7 +1527,7 @@ app.post('/api/instructor/submissions/:id/grade', async (req, res) => {
             }
         }
 
-        if (isDatabaseConfigured()) {
+        if (isDbAvailable()) {
             try {
                 const db = await getDatabase();
                 if (db) {

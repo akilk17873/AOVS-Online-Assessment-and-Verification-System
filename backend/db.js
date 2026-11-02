@@ -32,6 +32,10 @@ function isDatabaseConfigured() {
     return Boolean(process.env.MONGODB_URI && process.env.MONGODB_URI.trim().length > 0);
 }
 
+function isDbAvailable() {
+    return Boolean(cachedClient && !dbConnectionFailed);
+}
+
 /**
  * Get or establish a singleton connection to MongoDB Atlas
  * @param {string} [customUri] Optional URI for testing
@@ -643,6 +647,7 @@ module.exports = {
     getDatabase,
     closeDatabaseConnection,
     isDatabaseConfigured,
+    isDbAvailable,
     maskMongoUri,
     seedInitialExams,
     getExamFromDb,
